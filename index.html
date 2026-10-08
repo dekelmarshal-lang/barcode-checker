@@ -10,13 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: one-handed packing-line station — sync chip and shared tallies on top, camera stage, start button, quick fixes, log / sync / settings folded below */
+/* Layout: one-handed packing-line station — sync chip and shared tallies on top, camera stage, the two label checks, start button, quick fixes, log / sync / settings folded below */
 :root{
   --bg:#eef1f3; --surface:#ffffff; --sunken:#e3e8eb; --line:#cfd6db;
   --ink:#16222b; --muted:#56646e; --accent:#0b5d7a; --accent-ink:#ffffff;
   --ok:#147a39; --err:#b3261e; --warn:#a35200; --off:#7b8790;
   --ok-fill:#17853f; --err-fill:#c0281f;
-  --warn-bg:#fdf0d8; --warn-ink:#7a4300;
   --stage:#0c1216;
   --f-display:"Rubik","IBM Plex Sans Hebrew",system-ui,sans-serif;
   --f-body:"IBM Plex Sans Hebrew","Rubik",system-ui,sans-serif;
@@ -28,14 +27,12 @@
   --ink:#e8eef2; --muted:#9aaab4; --accent:#4fb3d6; --accent-ink:#06222c;
   --ok:#5ccf83; --err:#ff8a80; --warn:#f2a54a; --off:#7d8b94;
   --ok-fill:#17853f; --err-fill:#b3261e;
-  --warn-bg:#33260f; --warn-ink:#f3c06d;
   --stage:#05080a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1519; --surface:#172027; --sunken:#111a20; --line:#2a3943;
   --ink:#e8eef2; --muted:#9aaab4; --accent:#4fb3d6; --accent-ink:#06222c;
   --ok:#5ccf83; --err:#ff8a80; --warn:#f2a54a; --off:#7d8b94;
   --ok-fill:#17853f; --err-fill:#b3261e;
-  --warn-bg:#33260f; --warn-ink:#f3c06d;
   --stage:#05080a; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -68,17 +65,15 @@ button:disabled{opacity:.45;cursor:default}
 
 .stage{position:relative;background:var(--stage);border-radius:16px;overflow:hidden;aspect-ratio:4/3;max-width:100%;color:#fff}
 .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.frame{position:absolute;inset:14% 14%;border:3px solid rgba(255,255,255,.8);border-radius:14px;pointer-events:none;display:grid;place-items:center}
+.frame{position:absolute;inset:10% 6%;border:3px solid rgba(255,255,255,.8);border-radius:14px;pointer-events:none;display:grid;place-items:center}
 .frame.wait{border-style:dashed;border-color:#f3c06d}
 .frame .fh{background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 12px;border-radius:8px;font-size:.95rem;text-align:center}
 .idle{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;padding:20px;text-align:center}
-.idle p{margin:0;color:#c9d4da;font-size:.95rem;max-width:36ch}
+.idle p{margin:0;color:#c9d4da;font-size:.95rem;max-width:38ch}
 .idle p.err{color:#ffd0cc}
 .tool{position:absolute;top:10px;min-height:44px;min-width:44px;padding:8px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.35)}
 .tool.on{background:#fff;color:#000}
 #bTorch{inset-inline-start:10px} #bStop{inset-inline-end:10px}
-.expect{position:absolute;bottom:8px;inset-inline:0;text-align:center;font-size:.85rem;color:#e6edf1;pointer-events:none}
-.expect code{font-family:var(--f-mono);background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px}
 
 .result{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;padding:18px;text-align:center;color:#fff}
 .result.ok{background:var(--ok-fill)} .result.err{background:var(--err-fill)}
@@ -90,11 +85,19 @@ button:disabled{opacity:.45;cursor:default}
 @media (prefers-reduced-motion:no-preference){.result .bar{animation:shrink var(--dur,.6s) linear forwards}}
 @keyframes shrink{to{transform:scaleX(0)}}
 
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slot{background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0;display:grid}
+.slot .h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.95rem}
+.slot .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;flex:none;font-size:.8rem;line-height:1}
+.slot .exp{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);direction:ltr;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.full{border-color:var(--ok)}
+.slot.full .dot{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+
 .main{width:100%;min-height:64px;font-size:1.2rem;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .status{min-height:1.4em;font-size:.95rem;color:var(--muted);text-align:center}
 .status.err{color:var(--err);font-weight:600}
-.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.actions button,.actions .btn{flex-direction:column;gap:2px;min-height:64px;font-size:.88rem;padding:6px 4px;text-align:center}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.actions button,.actions .btn{flex-direction:column;gap:2px;min-height:64px;font-size:.8rem;padding:6px 2px;text-align:center;line-height:1.2}
 .scan input{width:100%;font-family:var(--f-mono);font-size:1rem;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:52px}
 
 details{background:var(--surface);border:1px solid var(--line);border-radius:12px}
@@ -113,6 +116,7 @@ details[open] summary .chev{transform:rotate(180deg)}
 .inline button{min-height:44px;font-size:.92rem}
 .opt{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
 .opt input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.opt small{display:block;color:var(--muted);font-size:.85rem}
 .note{font-size:.88rem;color:var(--muted);margin:0}
 .note.err{color:var(--err)}
 .link{font-family:var(--f-mono);font-size:.8rem;direction:ltr;text-align:left;background:var(--sunken);border-radius:8px;padding:8px 10px;word-break:break-all;user-select:all}
@@ -141,14 +145,13 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 
   <div class="tiles" aria-live="polite">
     <div class="tile ok"><span>תקינות</span><b id="nOk">0</b></div>
-    <div class="tile err"><span>שגיאות</span><b id="nErr">0</b></div>
+    <div class="tile err"><span>פסולות</span><b id="nErr">0</b></div>
   </div>
   <div class="meta" id="meta">סה״כ 0</div>
 
   <div class="stage" id="stage">
     <video id="vid" playsinline muted hidden></video>
     <div class="frame" id="frame" hidden><span class="fh" id="frameHint" hidden>הרחק את האריזה מהמצלמה</span></div>
-    <div class="expect" id="expect" hidden>צפוי: <code id="expVal">QR · D16099</code></div>
     <button class="tool" id="bTorch" type="button" hidden aria-label="פנס" aria-pressed="false">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2h10l-2 6H9zM9 8v12a1 1 0 001 1h4a1 1 0 001-1V8M12 12v3"/></svg>
     </button>
@@ -156,10 +159,15 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <div class="idle" id="idle">
-      <svg viewBox="0 0 64 64" width="60" height="60" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 18V6h12M46 6h12v12M58 46v12H46M18 58H6V46"/><rect x="18" y="18" width="12" height="12"/><rect x="36" y="34" width="10" height="10"/><path d="M36 18h10v10M18 36v10h10"/></svg>
-      <p id="idleMsg">לחץ "התחל סריקה" וכוון לתווית האחורית של כל אריזה. QR עם הערך <bdi id="idleVal">D16099</bdi> נחשב תקין, כל דבר אחר הוא שגיאה.</p>
+      <svg viewBox="0 0 64 64" width="60" height="60" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 18V6h12M46 6h12v12M58 46v12H46M18 58H6V46"/><rect x="14" y="16" width="14" height="14"/><path d="M36 16v32M40 16v32M45 16v32M48 16v32M14 38h14M14 44h14"/></svg>
+      <p id="idleMsg">לחץ "התחל סריקה" וכוון לתווית האחורית. האריזה תקינה רק אם שני הברקודים שמתחת למצלמה נקראים עם הערך הנכון.</p>
     </div>
     <div class="result" id="result" hidden role="alert"></div>
+  </div>
+
+  <div class="slots">
+    <div class="slot" id="s-qr"><div class="h"><span class="dot" aria-hidden="true"></span>QR</div><div class="exp" id="e-qr">D16099</div></div>
+    <div class="slot" id="s-c128"><div class="h"><span class="dot" aria-hidden="true"></span>Code 128</div><div class="exp" id="e-c128">7290000339566</div></div>
   </div>
 
   <button class="main" id="bMain" type="button">
@@ -171,15 +179,19 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
   <div class="actions">
     <button type="button" id="bMark">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"/></svg>
-      סמן כשגיאה
+      סמן כפסולה
     </button>
     <button type="button" id="bUndo">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
       בטל אחרונה
     </button>
+    <button type="button" id="bReset">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>
+      נקה אריזה
+    </button>
     <label class="btn">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-      צילום תמונה
+      צילום
       <input id="fCam" type="file" accept="image/*" capture="environment">
     </label>
   </div>
@@ -232,7 +244,11 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
   <details>
     <summary>הגדרות<svg class="chev icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
     <div class="inner">
-      <label class="field">ערך תקין (ברקוד QR)<input id="vVal" dir="ltr" autocomplete="off" spellcheck="false"></label>
+      <div class="row">
+        <label class="field">ערך QR<input id="vQr" dir="ltr" autocomplete="off" spellcheck="false"></label>
+        <label class="field">ערך Code 128<input id="vC" dir="ltr" autocomplete="off" spellcheck="false" inputmode="numeric"></label>
+      </div>
+      <label class="opt"><input type="checkbox" id="oStop"><span>עצור על אריזה פסולה<small>מחייב לחיצה על "אשר והמשך" לפני האריזה הבאה.</small></span></label>
       <label class="opt"><input type="checkbox" id="oSound"><span>צליל ורטט</span></label>
     </div>
   </details>
@@ -240,8 +256,7 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
-/* ===== Live sync: paste the firebaseConfig object from the Firebase console here.
-   Leave null to run on this device only. ===== */
+/* ===== Live sync: firebaseConfig from the Firebase console. Set to null to run on each device only. ===== */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyC6jt9rbFGu-ceOEAIiFlr_Kd64dzoCk0A",
   authDomain: "barcode-checker-f3549.firebaseapp.com",
@@ -259,8 +274,10 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 
 /* ---------- settings ---------- */
 function cleanLine(s){return String(s||'').trim().replace(/[^\w֐-׿-]/g,'').slice(0,40)}
-const DEF={val:'D16099',sound:true,line:'',devName:''};
+const DEF={qr:'D16099',c128:'7290000339566',stopRej:true,sound:true,line:'',devName:''};
 const cfg=Object.assign({},DEF,store.get('qr-cfg',{}));
+if(cfg.val&&!store.get('qr-cfg',{}).qr)cfg.qr=cfg.val;
+delete cfg.val;
 let devId=store.get('qr-dev',null);
 if(!devId){devId='d'+Math.random().toString(36).slice(2,10);store.set('qr-dev',devId)}
 if(!cfg.devName)cfg.devName='טלפון '+(100+Math.floor(Math.random()*900));
@@ -272,19 +289,29 @@ let log=store.get('qr-log',[]);if(!Array.isArray(log))log=[];
 const saveLog=()=>{if(log.length>6000)log=log.slice(-5000);store.set('qr-log',log)};
 
 /* ---------- values ---------- */
-const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',cbar:'Codabar',pdf:'PDF417',aztec:'Aztec',itf:'ITF'};
-const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',F:'cbar',L:'pdf',z:'aztec',I:'itf'};
+const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',pdf:'PDF417',aztec:'Aztec'};
+const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',L:'pdf',z:'aztec'};
 // keyboard-wedge scanners on a Hebrew keyboard layout type Hebrew letters instead of Latin ones
 const HEB={'ש':'A','נ':'B','ב':'C','ג':'D','ק':'E','כ':'F','ע':'G','י':'H','ן':'I','ח':'J','ל':'K','ך':'L','צ':'M','מ':'N','ם':'O','פ':'P','ר':'R','ד':'S','א':'T','ו':'U','ה':'V','ס':'X','ט':'Y','ז':'Z','ף':';','ת':',','ץ':'.'};
 const unHeb=t=>String(t).replace(/[א-ת]/g,c=>HEB[c]||c);
 const clean=t=>String(t).replace(/^\][A-Za-z][0-9A-Za-z]/,'').replace(/[\u0000-\u001f\u007f\s]/g,'').toUpperCase();
-const TITLE={ok:'תקין',err:'שגיאה'};
+const short=v=>v.length>40?v.slice(0,40)+'…':v;
+const TITLE={ok:'תקינה',err:'פסולה'};
+const SLOT={qr:'QR',c128:'Code 128'};
 const esc=s=>String(s).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
-const want=()=>clean(cfg.val);
+const exp=()=>({qr:clean(cfg.qr),c128:clean(cfg.c128)});
 
 /* ---------- state ---------- */
-let phase='scan',ackNeeded=false,autoT=null;
+let pkg={qr:null,c128:null},phase='scan',ackNeeded=false,autoT=null;
 function status(t,err){const s=$('status');s.textContent=t||'';s.className='status'+(err?' err':'')}
+function renderSlots(){
+  const E=exp();
+  for(const k of['qr','c128']){
+    $('s-'+k).classList.toggle('full',!!pkg[k]);
+    $('s-'+k).querySelector('.dot').textContent=pkg[k]?'✓':'';
+    $('e-'+k).textContent=E[k];
+  }
+}
 
 /* ---------- sound ---------- */
 let actx=null;
@@ -292,37 +319,55 @@ function unlockAudio(){try{actx=actx||new(window.AudioContext||window.webkitAudi
 function tone(f,d,w,type){if(!actx)return;try{const o=actx.createOscillator(),g=actx.createGain();o.type=type||'sine';o.frequency.value=f;o.connect(g);g.connect(actx.destination);const t=actx.currentTime+(w||0);g.gain.setValueAtTime(.22,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.start(t);o.stop(t+d)}catch(e){}}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 const fx={
+  capture(){if(cfg.sound){tone(1050,.06);vib(25)}},
   ok(){if(cfg.sound){tone(880,.09);tone(1320,.12,.1);vib(50)}},
   err(){if(cfg.sound){tone(190,.35,0,'square');tone(150,.45,.38,'square');vib([300,100,300,100,300])}},
   nope(){if(cfg.sound){tone(330,.12,0,'triangle');vib(80)}}
 };
 
 /* ---------- verdict ---------- */
-// found: codes read together (one camera frame, one photo or one scanner read)
-function evaluate(found){
-  if(phase!=='scan'||!found.length)return;
-  const good=found.find(f=>clean(f.text)===want()&&(f.sym==='qr'||!f.sym));
-  if(good)return record('ok',good);
-  const f=found.find(f=>clean(f.text)===want())||found[0];
-  const v=clean(f.text),why=[];
-  if(f.sym&&f.sym!=='qr')why.push('סוג ברקוד: '+SYM[f.sym]+' (צפוי QR)');
-  if(v!==want())why.push('ערך: '+(v?v.slice(0,40):'ריק')+' (צפוי '+want()+')');
-  record('err',f,why.join('\n'));
+// Feeds one decoded code into the current package.
+// live=true: camera, where each call is a new appearance of the code in the frame.
+// Returns 'requeue' when the code should be counted again for the next package.
+function ingest(f,live){
+  if(phase!=='scan')return'requeue';
+  const v=clean(f.text),E=exp();
+  let slot=f.sym==='qr'?'qr':f.sym==='c128'?'c128':null;
+  if(f.sym&&!slot)return reject('ברקוד מסוג לא צפוי: '+SYM[f.sym]+(v?' ('+short(v)+')':''));
+  if(!slot){slot=v===E.qr?'qr':v===E.c128?'c128':null;if(!slot)return reject('ערך לא צפוי: '+(short(v)||'ריק'))}
+  if(v!==E[slot])return reject(SLOT[slot]+': '+(short(v)||'ריק')+' (צפוי '+E[slot]+')',{[slot]:v});
+  if(pkg[slot]){
+    if(!live)return'dup';
+    // the same code came back after leaving the frame: the previous package never showed its second code
+    reject('נקרא רק '+SLOT[slot]+'. '+SLOT[slot==='qr'?'c128':'qr']+' לא נקרא');
+    return'requeue';
+  }
+  pkg[slot]={v,sym:f.sym||null};
+  renderSlots();
+  if(pkg.qr&&pkg.c128)return finish('ok');
+  fx.capture();
+  const miss=pkg.qr?'c128':'qr';
+  status(SLOT[slot]+' תקין. עכשיו '+SLOT[miss]+'.');
+  return'part';
 }
+function reject(why,extra){finish('err',why,false,extra);return'done'}
 const ICON={
   ok:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 13-15"/></svg>',
-  err:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 4l21 38H3z"/><path d="M24 18v11M24 35.5v.5"/></svg>'
+  err:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M16 16l16 16M32 16L16 32"/></svg>'
 };
-function record(level,f,why,manual){
+function finish(level,why,manual,extra){
   phase='verdict';
   const e={id:devId+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),r:level};
-  if(f){e.v=clean(f.text).slice(0,120);if(f.sym)e.s=f.sym}
+  const q=extra&&extra.qr!=null?extra.qr:pkg.qr&&pkg.qr.v;
+  const c=extra&&extra.c128!=null?extra.c128:pkg.c128&&pkg.c128.v;
+  if(q!=null)e.q=String(q).slice(0,120);
+  if(c!=null)e.c=String(c).slice(0,120);
   if(why)e.w=why;
   if(sync.db&&sync.batch){e.b=sync.batch;syncWrite(e)}
   log.push(e);saveLog();render(level);
-  ackNeeded=level==='err'&&!manual;
-  const dur=level==='ok'?600:900;
-  const sub=level==='ok'?'QR · '+want():why;
+  ackNeeded=level==='err'&&!manual&&cfg.stopRej;
+  const dur=level==='ok'?600:1100;
+  const sub=level==='ok'?'QR ✓  ·  Code 128 ✓':why;
   const el=$('result');el.className='result '+level;el.hidden=false;
   el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
     (ackNeeded?'<button type="button" id="bAck">אשר והמשך</button>':'<div class="bar" style="--dur:'+dur+'ms"></div>');
@@ -330,14 +375,18 @@ function record(level,f,why,manual){
   if(ackNeeded){
     $('bAck').addEventListener('click',next);
     if(document.activeElement!==$('scanIn'))$('bAck').focus({preventScroll:true});
-    status('שגיאה. הפרד את האריזה ולחץ "אשר והמשך".',true);
+    status('אריזה פסולה. הפרד אותה ולחץ "אשר והמשך".',true);
   }else{autoT=setTimeout(next,dur);status('')}
+  return level;
 }
 function next(){
-  clearTimeout(autoT);autoT=null;phase='scan';ackNeeded=false;$('result').hidden=true;
+  clearTimeout(autoT);autoT=null;phase='scan';ackNeeded=false;pkg={qr:null,c128:null};
+  $('result').hidden=true;renderSlots();
   status(stream?'מוכן לאריזה הבאה.':'');
   if(isDesktop)$('scanIn').focus({preventScroll:true});
 }
+function resetPkg(){clearTimeout(autoT);phase='scan';ackNeeded=false;pkg={qr:null,c128:null};$('result').hidden=true;renderSlots();status('האריזה נוקתה. אפשר לסרוק אותה מחדש.')}
+function captured(){const p=[];if(pkg.qr)p.push('QR');if(pkg.c128)p.push('Code 128');return p.length?' (נקלט: '+p.join(', ')+')':''}
 
 /* ---------- counts & log ---------- */
 const scoped=()=>log.filter(e=>!e.u&&(sync.batch?e.b===sync.batch:!e.b));
@@ -383,22 +432,22 @@ function undo(){
   if(!e){status('אין רשומה לביטול.');return}
   e.u=1;saveLog();
   if(e.b&&sync.db)syncUndo(e);
-  if(phase==='verdict'){clearTimeout(autoT);phase='scan';ackNeeded=false;$('result').hidden=true}
+  if(phase==='verdict'){clearTimeout(autoT);phase='scan';ackNeeded=false;pkg={qr:null,c128:null};$('result').hidden=true;renderSlots()}
   render();
   status('בוטלה הסריקה האחרונה של המכשיר הזה ('+TITLE[e.r]+'). אפשר לסרוק את האריזה שוב.');
 }
 async function rowsForExport(){
   if(sync.db&&sync.batch){
     const snap=await batchRef(sync.batch).collection('scans').orderBy('ct').get();
-    return snap.docs.map(d=>d.data()).map(x=>({t:x.ct,r:x.r,v:x.v,s:x.s,w:x.w,dev:x.dev}));
+    return snap.docs.map(d=>d.data()).map(x=>({t:x.ct,r:x.r,q:x.q,c:x.c,w:x.w,dev:x.dev}));
   }
-  return scoped().map(e=>({t:e.t,r:e.r,v:e.v,s:e.s,w:e.w,dev:cfg.devName}));
+  return scoped().map(e=>({t:e.t,r:e.r,q:e.q,c:e.c,w:e.w,dev:cfg.devName}));
 }
 async function csv(){
   const rows=await rowsForExport();
   const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""').replace(/\n/g,' | ')+'"';
-  const out=['#,date,time,result,value,symbology,device,details'];
-  rows.forEach((x,i)=>{const d=new Date(x.t);out.push([i+1,d.toLocaleDateString('en-CA'),d.toLocaleTimeString('en-GB'),x.r==='ok'?'OK':'ERROR',q(x.v),q(x.s?SYM[x.s]:''),q(x.dev),q(x.w)].join(','))});
+  const out=['#,date,time,result,qr_value,code128_value,device,details'];
+  rows.forEach((x,i)=>{const d=new Date(x.t);out.push([i+1,d.toLocaleDateString('en-CA'),d.toLocaleTimeString('en-GB'),x.r==='ok'?'OK':'REJECT',q(x.q),q(x.c),q(x.dev),q(x.w)].join(','))});
   return{text:out.join('\r\n'),n:rows.length};
 }
 $('bCsv').addEventListener('click',async()=>{
@@ -491,7 +540,7 @@ function track(p){
 function syncWrite(e){
   const F=firebase.firestore.FieldValue,br=batchRef(e.b),wb=sync.db.batch();
   const doc={r:e.r,ct:e.t,dev:cfg.devName,devId:devId,at:F.serverTimestamp()};
-  if(e.v!=null)doc.v=e.v;if(e.s)doc.s=e.s;if(e.w)doc.w=e.w;
+  if(e.q!=null)doc.q=e.q;if(e.c!=null)doc.c=e.c;if(e.w)doc.w=e.w;
   wb.set(br.collection('scans').doc(e.id),doc);
   wb.set(br.collection('counters').doc(devId),{name:cfg.devName,[e.r]:F.increment(1),at:F.serverTimestamp()},{merge:true});
   track(wb.commit());
@@ -505,7 +554,7 @@ function syncUndo(e){
 function activeDevs(){const now=Date.now();return Object.values(sync.counters).filter(c=>now-c.at<15*60000).length}
 function renderSync(){
   let cls='off',t='מקומי בלבד',detail='';
-  if(!FIREBASE_CONFIG){detail='הסנכרון עוד לא הוגדר. כרגע הרשומות נשמרות רק במכשיר הזה.'}
+  if(!FIREBASE_CONFIG){detail='הסנכרון לא מוגדר. הרשומות נשמרות רק במכשיר הזה.'}
   else if(sync.state==='error'){cls='err';t='שגיאת סנכרון';detail=sync.err||''}
   else if(!cfg.line){cls='warn';t='הגדר קוד קו';detail='הזן קוד קו זהה בכל המכשירים שעובדים יחד ולחץ "התחבר".'}
   else if(!sync.live){cls='warn';t='מתחבר…';detail='מתחבר לקו '+cfg.line+'…'}
@@ -528,7 +577,7 @@ $('bLine').addEventListener('click',()=>{
   const v=cleanLine($('vLine').value);$('vLine').value=v;
   if(!v){status('הזן קוד קו (אותיות באנגלית, ספרות או מקף).',true);return}
   cfg.line=v;saveCfg();
-  if(!FIREBASE_CONFIG){renderSync();status('קוד הקו נשמר. הסנכרון יופעל אחרי חיבור Firebase.');return}
+  if(!FIREBASE_CONFIG){renderSync();status('קוד הקו נשמר.');return}
   sync.db?attachLine():syncStart();
   status('מתחבר לקו '+v+'.');
 });
@@ -549,15 +598,15 @@ $('bBatchYes').addEventListener('click',()=>{
 });
 
 /* ---------- decoding ---------- */
-// product EAN/UPC codes are left out on purpose so they never trigger errors
-const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',codabar:'cbar',pdf417:'pdf',aztec:'aztec',itf:'itf'};
+// EAN/UPC product barcodes, ITF and Codabar are left out on purpose so they never reject a package
+const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',pdf417:'pdf',aztec:'aztec'};
 let detector=null;
-(async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('data_matrix'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
+(async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('code_128'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
 let zx=null,hints=null,ZMAP=null;
 function zxReady(){
   if(zx)return true;if(!window.ZXing)return false;
   const F=ZXing.BarcodeFormat;
-  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.CODABAR,'cbar'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec'],[F.ITF,'itf']].filter(p=>p[0]!==undefined));
+  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec']].filter(p=>p[0]!==undefined));
   zx=new ZXing.MultiFormatReader();hints=new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[...ZMAP.keys()]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
@@ -571,10 +620,14 @@ function zxAll(c){
     try{r=zx.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(c))),hints)}catch(e){}finally{try{zx.reset()}catch(e){}}
     if(!r)break;
     const text=r.getText();if(out.some(o=>o.text===text))break;
-    out.push({sym:ZMAP.get(r.getBarcodeFormat())||null,text});
+    const sym=ZMAP.get(r.getBarcodeFormat())||null;
+    out.push({sym,text});
     const pts=(r.getResultPoints()||[]).filter(Boolean);if(!pts.length)break;
     const xs=pts.map(p=>p.getX()),ys=pts.map(p=>p.getY());
-    const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pad=Math.max(x1-x0,y1-y0)*.35+14;
+    let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    const pad=Math.max(x1-x0,y1-y0)*.35+14;
+    // a 1D barcode reports points along one scan line, so mask its full height
+    if(sym!=='qr'&&sym!=='dm'&&sym!=='aztec'&&sym!=='pdf'){y0=0;y1=c.height}
     ctx.fillStyle='#fff';ctx.fillRect(x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad);
   }
   return out;
@@ -589,7 +642,7 @@ function toCanvas(src,max,crop){
 }
 
 /* ---------- live camera ---------- */
-// Every package carries the same QR, so a code counts once per appearance:
+// Every package carries the same two codes, so a code counts once per appearance:
 // it must leave the frame for GAP ms before it can count again.
 const GAP=1000,seen=new Map();
 let stream=null,track_=null,loop=null,busy=false,wake=null,torchOn=false;
@@ -601,19 +654,19 @@ async function start(){
   catch(e){stream=null;blocked(e&&e.name);return}
   track_=stream.getVideoTracks()[0];
   try{track_.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
-  const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('expect').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
+  const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
   try{await v.play()}catch(e){}
   try{const caps=track_.getCapabilities&&track_.getCapabilities();$('bTorch').hidden=!(caps&&caps.torch)}catch(e){}
   requestWake();
   $('bMainTxt').textContent='עצור סריקה';
-  status('כוון לתווית האחורית.');
+  status('כוון לתווית האחורית, כך ששני הברקודים בתוך המסגרת.');
   tick();
 }
 async function requestWake(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}}
 function stop(){
   clearTimeout(loop);loop=null;
   if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track_=null;torchOn=false;
-  $('vid').hidden=true;$('frame').hidden=true;$('expect').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;
+  $('vid').hidden=true;$('frame').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;
   $('bTorch').classList.remove('on');
   try{wake&&wake.release()}catch(e){}wake=null;
   $('bMainTxt').textContent='התחל סריקה';status('');
@@ -621,7 +674,7 @@ function stop(){
 function blocked(name){
   const m=$('idleMsg');m.className='err';
   m.textContent=(name==='NotFoundError'||name==='OverconstrainedError')
-    ?'לא נמצאה מצלמה זמינה. אפשר לעבוד עם "צילום תמונה" או עם סורק ידני.'
+    ?'לא נמצאה מצלמה זמינה. אפשר לעבוד עם "צילום" או עם סורק ידני.'
     :'אין גישה למצלמה. אשר גישה למצלמה בהגדרות הדפדפן לאתר הזה ורענן את הדף.';
   status('הסריקה החיה לא הופעלה.',true);
 }
@@ -631,17 +684,18 @@ async function tick(){
   if(!busy&&v.videoWidth){
     busy=true;
     let found=[];
-    try{found=await native(v);if(!found.length&&zxReady())found=zxAll(toCanvas(v,1000,[.84,.76]))}catch(e){}
-    const now=performance.now(),fresh=[];let held=0;
+    try{found=await native(v);if(found.length<2&&zxReady()){zxAll(toCanvas(v,1280,[.9,.82])).forEach(f=>{if(!found.some(x=>x.text===f.text))found.push(f)})}}catch(e){}
+    const now=performance.now();let held=0;
     for(const f of found){
       let s=seen.get(f.text);
       if(!s||now-s.t>GAP){s={t:now,used:false};seen.set(f.text,s)}else s.t=now;
       if(s.used){held++;continue}
-      fresh.push([f,s]);
+      // while a result is showing, new codes stay unused so they count as soon as it clears
+      if(phase!=='scan')continue;
+      s.used=true;
+      if(ingest(f,true)==='requeue')s.used=false;
     }
-    // while a result is showing, new codes stay unused so they count as soon as it clears
-    if(phase==='scan'&&fresh.length){fresh.forEach(([,s])=>s.used=true);evaluate(fresh.map(([f])=>f))}
-    const wait=phase==='scan'&&found.length>0&&held===found.length;
+    const wait=phase==='scan'&&!pkg.qr&&!pkg.c128&&found.length>0&&held===found.length;
     $('frame').classList.toggle('wait',wait);$('frameHint').hidden=!wait;
     busy=false;
   }
@@ -656,7 +710,7 @@ $('bTorch').addEventListener('click',async()=>{
 /* ---------- photo & hand scanner ---------- */
 function readyForInput(){
   if(phase!=='verdict')return true;
-  if(ackNeeded){status('הסריקה לא נקלטה. אשר קודם את השגיאה (Enter ריק או הכפתור).',true);fx.nope();return false}
+  if(ackNeeded){status('הסריקה לא נקלטה. אשר קודם את האריזה הפסולה (Enter ריק או הכפתור).',true);fx.nope();return false}
   next();return true;
 }
 $('fCam').addEventListener('change',async e=>{
@@ -667,9 +721,10 @@ $('fCam').addEventListener('change',async e=>{
   if(!img)img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=URL.createObjectURL(file)});
   if(!img){status('לא ניתן לקרוא את התמונה.',true);return}
   let found=await native(img);
-  if(!found.length)for(const s of[1600,1000,2400]){found=zxAll(toCanvas(img,s));if(found.length)break}
+  if(found.length<2)for(const s of[1600,1000,2400]){zxAll(toCanvas(img,s)).forEach(f=>{if(!found.some(x=>x.text===f.text))found.push(f)});if(found.length>=2)break}
   if(!found.length){status('לא נמצא ברקוד. צלם קרוב, ישר ובתאורה טובה.',true);return}
-  status('');evaluate(found);
+  status('');
+  for(const f of found){if(phase!=='scan')break;ingest(f,false)}
 });
 let isDesktop=false;try{isDesktop=matchMedia('(pointer:fine)').matches}catch(e){}
 $('scanIn').addEventListener('keydown',e=>{
@@ -679,25 +734,29 @@ $('scanIn').addEventListener('keydown',e=>{
   if(!t.trim()){if(phase==='verdict')next();return}
   if(!readyForInput())return;
   const m=t.match(/^\]([A-Za-z])/);
-  evaluate([{text:t,sym:m?(AIM[m[1]]||null):null}]);
+  if(ingest({text:t,sym:m?(AIM[m[1]]||null):null},false)==='dup')status('הברקוד הזה כבר נקלט באריזה הנוכחית.');
 });
 
 /* ---------- settings ---------- */
 function loadSettings(){
-  $('vVal').value=cfg.val;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
-  $('expVal').textContent='QR · '+want();$('idleVal').textContent=want();
+  const E=exp();
+  $('vQr').value=E.qr;$('vC').value=E.c128;$('oStop').checked=cfg.stopRej;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
+  renderSlots();
 }
-$('vVal').addEventListener('change',()=>{cfg.val=clean(unHeb($('vVal').value))||DEF.val;saveCfg();loadSettings()});
+$('vQr').addEventListener('change',()=>{cfg.qr=clean(unHeb($('vQr').value))||DEF.qr;saveCfg();loadSettings()});
+$('vC').addEventListener('change',()=>{cfg.c128=clean(unHeb($('vC').value))||DEF.c128;saveCfg();loadSettings()});
+$('oStop').addEventListener('change',()=>{cfg.stopRej=$('oStop').checked;saveCfg()});
 $('oSound').addEventListener('change',()=>{cfg.sound=$('oSound').checked;saveCfg()});
 
 /* ---------- wiring ---------- */
 $('bMain').addEventListener('click',()=>{stream?stop():start()});
 $('bStop').addEventListener('click',stop);
 $('bUndo').addEventListener('click',undo);
+$('bReset').addEventListener('click',resetPkg);
 $('bMark').addEventListener('click',()=>{
   unlockAudio();
   if(phase==='verdict'){if(ackNeeded)next();else return}
-  record('err',null,'סומנה ידנית (תווית חסרה או לא קריאה)',true);
+  finish('err','סומנה ידנית כפסולה'+captured(),true);
 });
 document.addEventListener('keydown',e=>{
   if(phase==='verdict'&&ackNeeded&&(e.key==='Enter'||e.key===' ')&&document.activeElement!==$('scanIn')&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}
