@@ -109,7 +109,7 @@ details[open] summary .chev{transform:rotate(180deg)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .row button,.inner>button{min-height:44px;font-size:.92rem}
 .field{display:grid;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
-.field input{font-family:var(--f-mono);font-size:1rem;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--sunken);color:var(--ink);min-height:44px;width:100%}
+.field input,.field select{font-family:var(--f-mono);font-size:1rem;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--sunken);color:var(--ink);min-height:44px;width:100%}
 .field.he input{font-family:var(--f-body)}
 .inline{display:flex;gap:8px;align-items:end}
 .inline .field{flex:1}
@@ -167,7 +167,7 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 
   <div class="slots">
     <div class="slot" id="s-qr"><div class="h"><span class="dot" aria-hidden="true"></span>QR</div><div class="exp" id="e-qr">D16099</div></div>
-    <div class="slot" id="s-c128"><div class="h"><span class="dot" aria-hidden="true"></span>Code 128</div><div class="exp" id="e-c128">7290000339566</div></div>
+    <div class="slot" id="s-c128"><div class="h"><span class="dot" aria-hidden="true"></span><span id="n-c128">EAN-13</span></div><div class="exp" id="e-c128">7290000339566</div></div>
   </div>
 
   <button class="main" id="bMain" type="button">
@@ -246,8 +246,9 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
     <div class="inner">
       <div class="row">
         <label class="field">ערך QR<input id="vQr" dir="ltr" autocomplete="off" spellcheck="false"></label>
-        <label class="field">ערך Code 128<input id="vC" dir="ltr" autocomplete="off" spellcheck="false" inputmode="numeric"></label>
+        <label class="field">ערך ברקוד המוצר<input id="vC" dir="ltr" autocomplete="off" spellcheck="false" inputmode="numeric"></label>
       </div>
+      <label class="field">סוג ברקוד המוצר<select id="vSym2"><option value="ean13">EAN-13</option><option value="c128">Code 128</option></select></label>
       <label class="opt"><input type="checkbox" id="oStop"><span>עצור על אריזה פסולה<small>מחייב לחיצה על "אשר והמשך" לפני האריזה הבאה.</small></span></label>
       <label class="opt"><input type="checkbox" id="oSound"><span>צליל ורטט</span></label>
     </div>
@@ -274,7 +275,7 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 
 /* ---------- settings ---------- */
 function cleanLine(s){return String(s||'').trim().replace(/[^\w֐-׿-]/g,'').slice(0,40)}
-const DEF={qr:'D16099',c128:'7290000339566',stopRej:true,sound:true,line:'',devName:''};
+const DEF={qr:'D16099',c128:'7290000339566',sym2:'ean13',stopRej:true,sound:true,line:'',devName:''};
 const cfg=Object.assign({},DEF,store.get('qr-cfg',{}));
 if(cfg.val&&!store.get('qr-cfg',{}).qr)cfg.qr=cfg.val;
 delete cfg.val;
@@ -289,15 +290,16 @@ let log=store.get('qr-log',[]);if(!Array.isArray(log))log=[];
 const saveLog=()=>{if(log.length>6000)log=log.slice(-5000);store.set('qr-log',log)};
 
 /* ---------- values ---------- */
-const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',pdf:'PDF417',aztec:'Aztec'};
-const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',L:'pdf',z:'aztec'};
+const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',pdf:'PDF417',aztec:'Aztec',ean13:'EAN-13',ean8:'EAN-8',upca:'UPC-A',upce:'UPC-E'};
+const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',L:'pdf',z:'aztec',E:'ean13'};
 // keyboard-wedge scanners on a Hebrew keyboard layout type Hebrew letters instead of Latin ones
 const HEB={'ש':'A','נ':'B','ב':'C','ג':'D','ק':'E','כ':'F','ע':'G','י':'H','ן':'I','ח':'J','ל':'K','ך':'L','צ':'M','מ':'N','ם':'O','פ':'P','ר':'R','ד':'S','א':'T','ו':'U','ה':'V','ס':'X','ט':'Y','ז':'Z','ף':';','ת':',','ץ':'.'};
 const unHeb=t=>String(t).replace(/[א-ת]/g,c=>HEB[c]||c);
 const clean=t=>String(t).replace(/^\][A-Za-z][0-9A-Za-z]/,'').replace(/[\u0000-\u001f\u007f\s]/g,'').toUpperCase();
 const short=v=>v.length>40?v.slice(0,40)+'…':v;
 const TITLE={ok:'תקינה',err:'פסולה'};
-const SLOT={qr:'QR',c128:'Code 128'};
+// slot 'c128' holds the second (product) barcode; its symbology is set in settings (EAN-13 by default)
+const SLOT={qr:'QR',get c128(){return SYM[cfg.sym2]||'EAN-13'}};
 const esc=s=>String(s).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
 const exp=()=>({qr:clean(cfg.qr),c128:clean(cfg.c128)});
 
@@ -332,7 +334,7 @@ const fx={
 function ingest(f,live){
   if(phase!=='scan')return'requeue';
   const v=clean(f.text),E=exp();
-  let slot=f.sym==='qr'?'qr':f.sym==='c128'?'c128':null;
+  let slot=f.sym==='qr'?'qr':f.sym===cfg.sym2?'c128':null;
   if(f.sym&&!slot)return reject('ברקוד מסוג לא צפוי: '+SYM[f.sym]+(v?' ('+short(v)+')':''));
   if(!slot){slot=v===E.qr?'qr':v===E.c128?'c128':null;if(!slot)return reject('ערך לא צפוי: '+(short(v)||'ריק'))}
   if(v!==E[slot])return reject(SLOT[slot]+': '+(short(v)||'ריק')+' (צפוי '+E[slot]+')',{[slot]:v});
@@ -367,7 +369,7 @@ function finish(level,why,manual,extra){
   log.push(e);saveLog();render(level);
   ackNeeded=level==='err'&&!manual&&cfg.stopRej;
   const dur=level==='ok'?600:1100;
-  const sub=level==='ok'?'QR ✓  ·  Code 128 ✓':why;
+  const sub=level==='ok'?'QR ✓  ·  '+SLOT.c128+' ✓':why;
   const el=$('result');el.className='result '+level;el.hidden=false;
   el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
     (ackNeeded?'<button type="button" id="bAck">אשר והמשך</button>':'<div class="bar" style="--dur:'+dur+'ms"></div>');
@@ -386,7 +388,7 @@ function next(){
   if(isDesktop)$('scanIn').focus({preventScroll:true});
 }
 function resetPkg(){clearTimeout(autoT);phase='scan';ackNeeded=false;pkg={qr:null,c128:null};$('result').hidden=true;renderSlots();status('האריזה נוקתה. אפשר לסרוק אותה מחדש.')}
-function captured(){const p=[];if(pkg.qr)p.push('QR');if(pkg.c128)p.push('Code 128');return p.length?' (נקלט: '+p.join(', ')+')':''}
+function captured(){const p=[];if(pkg.qr)p.push('QR');if(pkg.c128)p.push(SLOT.c128);return p.length?' (נקלט: '+p.join(', ')+')':''}
 
 /* ---------- counts & log ---------- */
 const scoped=()=>log.filter(e=>!e.u&&(sync.batch?e.b===sync.batch:!e.b));
@@ -446,7 +448,7 @@ async function rowsForExport(){
 async function csv(){
   const rows=await rowsForExport();
   const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""').replace(/\n/g,' | ')+'"';
-  const out=['#,date,time,result,qr_value,code128_value,device,details'];
+  const out=['#,date,time,result,qr_value,product_barcode_value,device,details'];
   rows.forEach((x,i)=>{const d=new Date(x.t);out.push([i+1,d.toLocaleDateString('en-CA'),d.toLocaleTimeString('en-GB'),x.r==='ok'?'OK':'REJECT',q(x.q),q(x.c),q(x.dev),q(x.w)].join(','))});
   return{text:out.join('\r\n'),n:rows.length};
 }
@@ -598,15 +600,15 @@ $('bBatchYes').addEventListener('click',()=>{
 });
 
 /* ---------- decoding ---------- */
-// EAN/UPC product barcodes, ITF and Codabar are left out on purpose so they never reject a package
-const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',pdf417:'pdf',aztec:'aztec'};
+// ITF and Codabar are left out on purpose: they misread easily and would reject good packages
+const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',pdf417:'pdf',aztec:'aztec',ean_13:'ean13',ean_8:'ean8',upc_a:'upca',upc_e:'upce'};
 let detector=null;
-(async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('code_128'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
+(async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('ean_13')&&f.includes('code_128'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
 let zx=null,hints=null,ZMAP=null;
 function zxReady(){
   if(zx)return true;if(!window.ZXing)return false;
   const F=ZXing.BarcodeFormat;
-  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec']].filter(p=>p[0]!==undefined));
+  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec'],[F.EAN_13,'ean13'],[F.EAN_8,'ean8'],[F.UPC_A,'upca'],[F.UPC_E,'upce']].filter(p=>p[0]!==undefined));
   zx=new ZXing.MultiFormatReader();hints=new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[...ZMAP.keys()]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
@@ -653,13 +655,13 @@ async function start(){
   try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false})}
   catch(e){stream=null;blocked(e&&e.name);return}
   track_=stream.getVideoTracks()[0];
-  try{track_.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+  try{const pc=track_.applyConstraints({advanced:[{focusMode:'continuous'}]});if(pc&&pc.catch)pc.catch(()=>{})}catch(e){}
   const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
   try{await v.play()}catch(e){}
   try{const caps=track_.getCapabilities&&track_.getCapabilities();$('bTorch').hidden=!(caps&&caps.torch)}catch(e){}
   requestWake();
   $('bMainTxt').textContent='עצור סריקה';
-  status('כוון לתווית האחורית, כך ששני הברקודים בתוך המסגרת.');
+  status('כוון לתווית, כך שה-QR וברקוד המוצר בתוך המסגרת.');
   tick();
 }
 async function requestWake(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}}
@@ -740,11 +742,12 @@ $('scanIn').addEventListener('keydown',e=>{
 /* ---------- settings ---------- */
 function loadSettings(){
   const E=exp();
-  $('vQr').value=E.qr;$('vC').value=E.c128;$('oStop').checked=cfg.stopRej;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
+  $('vQr').value=E.qr;$('vC').value=E.c128;$('vSym2').value=cfg.sym2;$('n-c128').textContent=SLOT.c128;$('oStop').checked=cfg.stopRej;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
   renderSlots();
 }
 $('vQr').addEventListener('change',()=>{cfg.qr=clean(unHeb($('vQr').value))||DEF.qr;saveCfg();loadSettings()});
 $('vC').addEventListener('change',()=>{cfg.c128=clean(unHeb($('vC').value))||DEF.c128;saveCfg();loadSettings()});
+$('vSym2').addEventListener('change',()=>{cfg.sym2=$('vSym2').value==='c128'?'c128':'ean13';saveCfg();loadSettings()});
 $('oStop').addEventListener('change',()=>{cfg.stopRej=$('oStop').checked;saveCfg()});
 $('oSound').addEventListener('change',()=>{cfg.sound=$('oSound').checked;saveCfg()});
 
