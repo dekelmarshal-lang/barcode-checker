@@ -41,7 +41,15 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:10px 32px;display:grid;gap:10px}
 header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 h1{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0;flex:1}
-.meta{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;text-align:center}
+.meta{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+.metarow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.linkbtn{min-height:36px;padding:4px 12px;font-size:.85rem;border-radius:99px}
+.ask{background:var(--surface);border:1px solid var(--err);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.ask .row button{min-height:44px;font-size:.92rem}
+.gbar{position:absolute;top:0;inset-inline:0;height:6px;background:rgba(255,255,255,.18)}
+.gbar i{display:block;height:100%;width:100%;background:#f3c06d;transform-origin:right;transition:transform .12s linear}
+.gtxt{position:absolute;top:12px;inset-inline:0;text-align:center;font-size:.85rem;font-weight:600;pointer-events:none}
+.gtxt span{background:rgba(0,0,0,.6);padding:3px 10px;border-radius:8px}
 
 button,.btn{font:inherit;font-weight:600;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;position:relative;touch-action:manipulation}
 button:focus-visible,.btn:focus-within,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -147,11 +155,23 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
     <div class="tile ok"><span>תקינות</span><b id="nOk">0</b></div>
     <div class="tile err"><span>פסולות</span><b id="nErr">0</b></div>
   </div>
-  <div class="meta" id="meta">סה״כ 0</div>
+  <div class="metarow">
+    <span class="meta" id="meta">סה״כ 0</span>
+    <button class="linkbtn" id="bBatch" type="button">איפוס נתונים</button>
+  </div>
+  <div class="ask" id="batchAsk" hidden>
+    <p class="note" id="batchTxt"></p>
+    <div class="row">
+      <button type="button" id="bBatchYes" style="color:var(--err)">אפס</button>
+      <button type="button" id="bBatchNo">ביטול</button>
+    </div>
+  </div>
 
   <div class="stage" id="stage">
     <video id="vid" playsinline muted hidden></video>
     <div class="frame" id="frame" hidden><span class="fh" id="frameHint" hidden>הרחק את האריזה מהמצלמה</span></div>
+    <div class="gbar" id="gbar" hidden><i id="gbarFill"></i></div>
+    <div class="gtxt" id="gtxt" hidden><span id="gtxtIn"></span></div>
     <button class="tool" id="bTorch" type="button" hidden aria-label="פנס" aria-pressed="false">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2h10l-2 6H9zM9 8v12a1 1 0 001 1h4a1 1 0 001-1V8M12 12v3"/></svg>
     </button>
@@ -230,14 +250,6 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
         <button type="button" id="bJoin" style="margin-top:8px;width:100%;min-height:44px;font-size:.92rem">העתק קישור</button>
       </div>
       <ul class="devs" id="devs"></ul>
-      <button type="button" id="bBatch">התחל אצווה חדשה</button>
-      <div id="batchAsk" hidden>
-        <p class="note" id="batchTxt"></p>
-        <div class="row" style="margin-top:8px">
-          <button type="button" id="bBatchYes" style="color:var(--err)">כן, אפס</button>
-          <button type="button" id="bBatchNo">ביטול</button>
-        </div>
-      </div>
     </div>
   </details>
 
@@ -249,6 +261,10 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
         <label class="field">ערך ברקוד המוצר<input id="vC" dir="ltr" autocomplete="off" spellcheck="false" inputmode="numeric"></label>
       </div>
       <label class="field">סוג ברקוד המוצר<select id="vSym2"><option value="ean13">EAN-13</option><option value="c128">Code 128</option></select></label>
+      <div class="row">
+        <label class="field">זמן חסד לקריאת שני הברקודים<select id="vGrace"><option value="2">2 שניות</option><option value="3">3 שניות</option><option value="4">4 שניות</option><option value="6">6 שניות</option></select></label>
+        <label class="field">השהייה אחרי תוצאה<select id="vPause"><option value="0.8">0.8 שניות</option><option value="1.2">1.2 שניות</option><option value="2">2 שניות</option><option value="3">3 שניות</option></select></label>
+      </div>
       <label class="opt"><input type="checkbox" id="oStop"><span>עצור על אריזה פסולה<small>מחייב לחיצה על "אשר והמשך" לפני האריזה הבאה.</small></span></label>
       <label class="opt"><input type="checkbox" id="oSound"><span>צליל ורטט</span></label>
     </div>
@@ -275,7 +291,7 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 
 /* ---------- settings ---------- */
 function cleanLine(s){return String(s||'').trim().replace(/[^\w֐-׿-]/g,'').slice(0,40)}
-const DEF={qr:'D16099',c128:'7290000339566',sym2:'ean13',stopRej:true,sound:true,line:'',devName:''};
+const DEF={qr:'D16099',c128:'7290000339566',sym2:'ean13',grace:3,pause:1.2,stopRej:true,sound:true,line:'',devName:''};
 const cfg=Object.assign({},DEF,store.get('qr-cfg',{}));
 if(cfg.val&&!store.get('qr-cfg',{}).qr)cfg.qr=cfg.val;
 delete cfg.val;
@@ -328,37 +344,63 @@ const fx={
 };
 
 /* ---------- verdict ---------- */
-// Feeds one decoded code into the current package.
-// live=true: camera, where each call is a new appearance of the code in the frame.
-// Returns 'requeue' when the code should be counted again for the next package.
-function ingest(f,live){
-  if(phase!=='scan')return'requeue';
+// live: the package currently in front of the camera — when it started and unexpected codes seen on it
+const live={start:0,wrong:new Map()};
+function slotOf(f){ // which check this code passes, or null
   const v=clean(f.text),E=exp();
-  let slot=f.sym==='qr'?'qr':f.sym===cfg.sym2?'c128':null;
-  if(f.sym&&!slot)return reject('ברקוד מסוג לא צפוי: '+SYM[f.sym]+(v?' ('+short(v)+')':''));
-  if(!slot){slot=v===E.qr?'qr':v===E.c128?'c128':null;if(!slot)return reject('ערך לא צפוי: '+(short(v)||'ריק'))}
-  if(v!==E[slot])return reject(SLOT[slot]+': '+(short(v)||'ריק')+' (צפוי '+E[slot]+')',{[slot]:v});
-  if(pkg[slot]){
-    if(!live)return'dup';
-    // the same code came back after leaving the frame: the previous package never showed its second code
-    reject('נקרא רק '+SLOT[slot]+'. '+SLOT[slot==='qr'?'c128':'qr']+' לא נקרא');
-    return'requeue';
-  }
-  pkg[slot]={v,sym:f.sym||null};
-  renderSlots();
-  if(pkg.qr&&pkg.c128)return finish('ok');
-  fx.capture();
-  const miss=pkg.qr?'c128':'qr';
-  status(SLOT[slot]+' תקין. עכשיו '+SLOT[miss]+'.');
-  return'part';
+  if(f.sym==='qr')return v===E.qr?'qr':null;
+  if(f.sym===cfg.sym2)return v===E.c128?'c128':null;
+  if(!f.sym)return v===E.qr?'qr':v===E.c128?'c128':null; // hand scanner without symbology ID
+  return null;
 }
-function reject(why,extra){finish('err',why,false,extra);return'done'}
+function wrongReason(f){
+  const v=clean(f.text),E=exp();
+  if(f.sym==='qr')return'QR: '+(short(v)||'ריק')+' (צפוי '+E.qr+')';
+  if(f.sym===cfg.sym2)return SLOT.c128+': '+(short(v)||'ריק')+' (צפוי '+E.c128+')';
+  if(f.sym)return'ברקוד מסוג לא צפוי: '+SYM[f.sym]+(v?' ('+short(v)+')':'');
+  return'ערך לא צפוי: '+(short(v)||'ריק');
+}
+function wrongExtra(list){
+  const ex={};
+  for(const f of list){const v=clean(f.text);if(f.sym==='qr'&&!pkg.qr&&ex.qr==null)ex.qr=v;if(f.sym===cfg.sym2&&!pkg.c128&&ex.c128==null)ex.c128=v}
+  return ex;
+}
+function missing(){const m=[];if(!pkg.qr)m.push('לא נקרא '+SLOT.qr+' תקין');if(!pkg.c128)m.push('לא נקרא '+SLOT.c128+' תקין');return m}
+function fill(slot,f){if(pkg[slot])return false;pkg[slot]={v:clean(f.text),sym:f.sym||null};renderSlots();return true}
+function afterFill(slot){
+  if(pkg.qr&&pkg.c128){finish('ok');return}
+  fx.capture();
+  status(SLOT[slot]+' תקין. עכשיו '+SLOT[slot==='qr'?'c128':'qr']+'.');
+}
+// hand scanner: every read is deliberate, so a wrong code rejects at once
+function scanOne(f){
+  if(phase!=='scan')return;
+  const slot=slotOf(f);
+  if(!slot){finish('err',wrongReason(f),false,wrongExtra([f]));return}
+  if(!fill(slot,f)){status('הברקוד הזה כבר נקלט באריזה הנוכחית.');return}
+  afterFill(slot);
+}
+// photo: judge everything found in the picture together
+function scanSet(found){
+  if(phase!=='scan')return;
+  const wrong=[];let got=null;
+  for(const f of found){const slot=slotOf(f);if(slot){if(fill(slot,f))got=slot}else wrong.push(f)}
+  if(pkg.qr&&pkg.c128){finish('ok');return}
+  if(wrong.length){finish('err',[...missing(),...wrong.slice(0,2).map(wrongReason)].join('\n'),false,wrongExtra(wrong));return}
+  if(got)afterFill(got);else status('הברקוד כבר נקלט. צלם את הברקוד השני.');
+}
+// live camera: the grace time ran out before both correct codes were read
+function graceOver(){
+  const wr=[...live.wrong.values()].filter(f=>!(f.sym==='qr'&&pkg.qr)&&!(f.sym===cfg.sym2&&pkg.c128));
+  finish('err',[...missing(),...wr.slice(0,2).map(f=>'נקרא: '+wrongReason(f))].join('\n'),false,wrongExtra(wr));
+}
+function clearPkg(){pkg={qr:null,c128:null};live.start=0;live.wrong.clear();showGrace(0)}
 const ICON={
   ok:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 13-15"/></svg>',
   err:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M16 16l16 16M32 16L16 32"/></svg>'
 };
 function finish(level,why,manual,extra){
-  phase='verdict';
+  phase='verdict';showGrace(0);
   const e={id:devId+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),r:level};
   const q=extra&&extra.qr!=null?extra.qr:pkg.qr&&pkg.qr.v;
   const c=extra&&extra.c128!=null?extra.c128:pkg.c128&&pkg.c128.v;
@@ -368,7 +410,7 @@ function finish(level,why,manual,extra){
   if(sync.db&&sync.batch){e.b=sync.batch;syncWrite(e)}
   log.push(e);saveLog();render(level);
   ackNeeded=level==='err'&&!manual&&cfg.stopRej;
-  const dur=level==='ok'?600:1100;
+  const dur=level==='ok'?Math.round(cfg.pause*1000):Math.max(1100,Math.round(cfg.pause*1000));
   const sub=level==='ok'?'QR ✓  ·  '+SLOT.c128+' ✓':why;
   const el=$('result');el.className='result '+level;el.hidden=false;
   el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
@@ -382,12 +424,12 @@ function finish(level,why,manual,extra){
   return level;
 }
 function next(){
-  clearTimeout(autoT);autoT=null;phase='scan';ackNeeded=false;pkg={qr:null,c128:null};
+  clearTimeout(autoT);autoT=null;phase='scan';ackNeeded=false;clearPkg();
   $('result').hidden=true;renderSlots();
   status(stream?'מוכן לאריזה הבאה.':'');
   if(isDesktop)$('scanIn').focus({preventScroll:true});
 }
-function resetPkg(){clearTimeout(autoT);phase='scan';ackNeeded=false;pkg={qr:null,c128:null};$('result').hidden=true;renderSlots();status('האריזה נוקתה. אפשר לסרוק אותה מחדש.')}
+function resetPkg(){clearTimeout(autoT);phase='scan';ackNeeded=false;clearPkg();$('result').hidden=true;renderSlots();status('האריזה נוקתה. אפשר לסרוק אותה מחדש.')}
 function captured(){const p=[];if(pkg.qr)p.push('QR');if(pkg.c128)p.push(SLOT.c128);return p.length?' (נקלט: '+p.join(', ')+')':''}
 
 /* ---------- counts & log ---------- */
@@ -434,7 +476,7 @@ function undo(){
   if(!e){status('אין רשומה לביטול.');return}
   e.u=1;saveLog();
   if(e.b&&sync.db)syncUndo(e);
-  if(phase==='verdict'){clearTimeout(autoT);phase='scan';ackNeeded=false;pkg={qr:null,c128:null};$('result').hidden=true;renderSlots()}
+  if(phase==='verdict'){clearTimeout(autoT);phase='scan';ackNeeded=false;clearPkg();$('result').hidden=true;renderSlots()}
   render();
   status('בוטלה הסריקה האחרונה של המכשיר הזה ('+TITLE[e.r]+'). אפשר לסרוק את האריזה שוב.');
 }
@@ -511,7 +553,7 @@ function attachLine(){
       return;
     }
     const d=snap.data();
-    if(d.batch!==sync.batch)setBatch(d.batch,d.startedAt||0);
+    if(d.batch!==sync.batch){const was=sync.batch;setBatch(d.batch,d.startedAt||0);if(was&&d.by&&d.by!==cfg.devName)status('נתוני הסריקה אופסו על ידי '+d.by+'.')}
   },fail);
 }
 function setBatch(b,startedAt){
@@ -571,7 +613,6 @@ function renderSync(){
   const now=Date.now();
   $('devs').innerHTML=sync.live?Object.entries(sync.counters).sort((a,b)=>b[1].at-a[1].at).map(([id,c])=>
     '<li class="'+(now-c.at>15*60000?'idle-dev':'')+'"><span class="'+(id===devId?'me':'')+'">'+esc(c.name)+(id===devId?' (המכשיר הזה)':'')+'</span><span class="ok">✓ '+c.ok+'</span><span class="err">✗ '+c.err+'</span></li>').join(''):'';
-  $('bBatch').textContent=sync.live?'התחל אצווה חדשה (מאפס את כל המכשירים)':'איפוס מונים ויומן';
 }
 addEventListener('online',renderSync);addEventListener('offline',renderSync);
 $('sync').addEventListener('click',()=>{$('syncBox').open=true;$('syncBox').scrollIntoView({behavior:'smooth',block:'start'})});
@@ -589,26 +630,28 @@ $('bJoin').addEventListener('click',()=>{
   if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>status('הקישור הועתק. שלח אותו לשאר המכשירים.'),()=>status('סמן את הקישור והעתק ידנית.'));
 });
 $('bBatch').addEventListener('click',()=>{
-  $('batchTxt').textContent=sync.live?'המונים יתאפסו בכל המכשירים בקו '+cfg.line+'. הרשומות הקודמות נשמרות בשרת. כדאי להוריד CSV לפני כן.':'למחוק את כל היומן המקומי ולאפס את המונים? כדאי להוריד CSV לפני כן.';
-  $('batchAsk').hidden=false;
+  $('batchTxt').textContent=sync.live?'לאפס את נתוני הסריקה בכל המכשירים בקו '+cfg.line+'? המונים והיומן יתחילו מאפס בכל הטלפונים. הרשומות הקודמות נשמרות בשרת, וכדאי להוריד CSV לפני כן.':'לאפס את נתוני הסריקה במכשיר הזה? כדאי להוריד CSV לפני כן.';
+  $('batchAsk').hidden=!$('batchAsk').hidden;
 });
 $('bBatchNo').addEventListener('click',()=>{$('batchAsk').hidden=true});
 $('bBatchYes').addEventListener('click',()=>{
   $('batchAsk').hidden=true;
-  if(sync.live){track(sync.lineRef.set({batch:'b'+Date.now().toString(36),startedAt:Date.now(),by:cfg.devName}));status('התחילה אצווה חדשה בכל המכשירים.')}
-  else{log=[];saveLog();render();status('המונים והיומן אופסו.')}
+  if(phase==='verdict'||live.start||pkg.qr||pkg.c128)resetPkg();
+  if(sync.live){track(sync.lineRef.set({batch:'b'+Date.now().toString(36),startedAt:Date.now(),by:cfg.devName}));status('נתוני הסריקה אופסו בכל המכשירים.')}
+  else{log=[];saveLog();render();status('נתוני הסריקה אופסו.')}
 });
 
 /* ---------- decoding ---------- */
-// ITF and Codabar are left out on purpose: they misread easily and would reject good packages
-const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',pdf417:'pdf',aztec:'aztec',ean_13:'ean13',ean_8:'ean8',upc_a:'upca',upc_e:'upce'};
+// Only the label's own symbologies plus Data Matrix. Other 1D types (EAN-8, UPC, Code 39/93, ITF…)
+// are left out: partial or blurry reads of a good EAN-13 often decode as one of them.
+const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',ean_13:'ean13'};
 let detector=null;
 (async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('ean_13')&&f.includes('code_128'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
 let zx=null,hints=null,ZMAP=null;
 function zxReady(){
   if(zx)return true;if(!window.ZXing)return false;
   const F=ZXing.BarcodeFormat;
-  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec'],[F.EAN_13,'ean13'],[F.EAN_8,'ean8'],[F.UPC_A,'upca'],[F.UPC_E,'upce']].filter(p=>p[0]!==undefined));
+  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.EAN_13,'ean13']].filter(p=>p[0]!==undefined));
   zx=new ZXing.MultiFormatReader();hints=new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[...ZMAP.keys()]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
@@ -680,28 +723,51 @@ function blocked(name){
     :'אין גישה למצלמה. אשר גישה למצלמה בהגדרות הדפדפן לאתר הזה ורענן את הדף.';
   status('הסריקה החיה לא הופעלה.',true);
 }
+// A code must be read in CONFIRM consecutive looks before it counts; a code that does not belong
+// on the label needs more looks, so one blurry misread never rejects a good package.
+const CONFIRM_OK=2,CONFIRM_WRONG=4;
+function showGrace(frac,left){
+  const on=frac>0;$('gbar').hidden=!on;$('gtxt').hidden=!on;
+  if(on){$('gbarFill').style.transform='scaleX('+frac+')';$('gtxtIn').textContent='ממתין ל-'+left+'…'}
+}
 async function tick(){
   if(!stream)return;
   const v=$('vid');
   if(!busy&&v.videoWidth){
     busy=true;
     let found=[];
-    try{found=await native(v);if(found.length<2&&zxReady()){zxAll(toCanvas(v,1280,[.9,.82])).forEach(f=>{if(!found.some(x=>x.text===f.text))found.push(f)})}}catch(e){}
+    try{found=await native(v);if(found.length<2&&zxReady()){zxAll(toCanvas(v,1280,[.9,.82])).forEach(f=>{if(!found.some(x=>x.text===f.text&&x.sym===f.sym))found.push(f)})}}catch(e){}
     const now=performance.now();let held=0;
     for(const f of found){
-      let s=seen.get(f.text);
-      if(!s||now-s.t>GAP){s={t:now,used:false};seen.set(f.text,s)}else s.t=now;
-      if(s.used){held++;continue}
-      // while a result is showing, new codes stay unused so they count as soon as it clears
-      if(phase!=='scan')continue;
-      s.used=true;
-      if(ingest(f,true)==='requeue')s.used=false;
+      const key=(f.sym||'')+'|'+f.text;
+      let s=seen.get(key);
+      if(!s||now-s.t>GAP){s={t:now,hits:0,used:false};seen.set(key,s)}
+      s.t=now;s.hits++;
+      // result on screen or short pause: whatever is in view belongs to the package just judged
+      if(phase!=='scan'){s.used=true;continue}
+      if(s.used){if(!live.start)held++;continue}
+      const slot=slotOf(f);
+      if(slot){
+        if(s.hits<CONFIRM_OK)continue;
+        s.used=true;if(!live.start)live.start=now;
+        if(fill(slot,f))afterFill(slot);
+        if(phase!=='scan')break;
+      }else{
+        if(s.hits<CONFIRM_WRONG)continue;
+        s.used=true;if(!live.start)live.start=now;
+        live.wrong.set(key,f);
+      }
     }
-    const wait=phase==='scan'&&!pkg.qr&&!pkg.c128&&found.length>0&&held===found.length;
+    if(phase==='scan'&&live.start){
+      const left=cfg.grace*1000-(now-live.start);
+      if(left<=0)graceOver();
+      else showGrace(left/(cfg.grace*1000),!pkg.qr&&!pkg.c128?'QR ו-'+SLOT.c128:!pkg.qr?'QR':SLOT.c128);
+    }
+    const wait=phase==='scan'&&!live.start&&found.length>0&&held===found.length;
     $('frame').classList.toggle('wait',wait);$('frameHint').hidden=!wait;
     busy=false;
   }
-  loop=setTimeout(tick,detector?100:140);
+  loop=setTimeout(tick,detector?90:120);
 }
 $('bTorch').addEventListener('click',async()=>{
   if(!track_)return;torchOn=!torchOn;
@@ -723,10 +789,10 @@ $('fCam').addEventListener('change',async e=>{
   if(!img)img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=URL.createObjectURL(file)});
   if(!img){status('לא ניתן לקרוא את התמונה.',true);return}
   let found=await native(img);
-  if(found.length<2)for(const s of[1600,1000,2400]){zxAll(toCanvas(img,s)).forEach(f=>{if(!found.some(x=>x.text===f.text))found.push(f)});if(found.length>=2)break}
+  if(found.length<2)for(const s of[1600,1000,2400]){zxAll(toCanvas(img,s)).forEach(f=>{if(!found.some(x=>x.text===f.text&&x.sym===f.sym))found.push(f)});if(found.length>=2)break}
   if(!found.length){status('לא נמצא ברקוד. צלם קרוב, ישר ובתאורה טובה.',true);return}
   status('');
-  for(const f of found){if(phase!=='scan')break;ingest(f,false)}
+  scanSet(found);
 });
 let isDesktop=false;try{isDesktop=matchMedia('(pointer:fine)').matches}catch(e){}
 $('scanIn').addEventListener('keydown',e=>{
@@ -736,18 +802,20 @@ $('scanIn').addEventListener('keydown',e=>{
   if(!t.trim()){if(phase==='verdict')next();return}
   if(!readyForInput())return;
   const m=t.match(/^\]([A-Za-z])/);
-  if(ingest({text:t,sym:m?(AIM[m[1]]||null):null},false)==='dup')status('הברקוד הזה כבר נקלט באריזה הנוכחית.');
+  scanOne({text:t,sym:m?(AIM[m[1]]||null):null});
 });
 
 /* ---------- settings ---------- */
 function loadSettings(){
   const E=exp();
-  $('vQr').value=E.qr;$('vC').value=E.c128;$('vSym2').value=cfg.sym2;$('n-c128').textContent=SLOT.c128;$('oStop').checked=cfg.stopRej;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
+  $('vQr').value=E.qr;$('vC').value=E.c128;$('vSym2').value=cfg.sym2;$('vGrace').value=String(cfg.grace);$('vPause').value=String(cfg.pause);$('n-c128').textContent=SLOT.c128;$('oStop').checked=cfg.stopRej;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
   renderSlots();
 }
 $('vQr').addEventListener('change',()=>{cfg.qr=clean(unHeb($('vQr').value))||DEF.qr;saveCfg();loadSettings()});
 $('vC').addEventListener('change',()=>{cfg.c128=clean(unHeb($('vC').value))||DEF.c128;saveCfg();loadSettings()});
 $('vSym2').addEventListener('change',()=>{cfg.sym2=$('vSym2').value==='c128'?'c128':'ean13';saveCfg();loadSettings()});
+$('vGrace').addEventListener('change',()=>{cfg.grace=Math.min(10,Math.max(1,parseFloat($('vGrace').value)||DEF.grace));saveCfg()});
+$('vPause').addEventListener('change',()=>{cfg.pause=Math.min(5,Math.max(.3,parseFloat($('vPause').value)||DEF.pause));saveCfg()});
 $('oStop').addEventListener('change',()=>{cfg.stopRej=$('oStop').checked;saveCfg()});
 $('oSound').addEventListener('change',()=>{cfg.sound=$('oSound').checked;saveCfg()});
 
