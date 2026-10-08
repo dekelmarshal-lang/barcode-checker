@@ -157,14 +157,6 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
   </div>
   <div class="metarow">
     <span class="meta" id="meta">סה״כ 0</span>
-    <button class="linkbtn" id="bBatch" type="button">איפוס נתונים</button>
-  </div>
-  <div class="ask" id="batchAsk" hidden>
-    <p class="note" id="batchTxt"></p>
-    <div class="row">
-      <button type="button" id="bBatchYes" style="color:var(--err)">אפס</button>
-      <button type="button" id="bBatchNo">ביטול</button>
-    </div>
   </div>
 
   <div class="stage" id="stage">
@@ -629,18 +621,6 @@ $('bJoin').addEventListener('click',()=>{
   const t=$('joinLink').textContent;
   if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>status('הקישור הועתק. שלח אותו לשאר המכשירים.'),()=>status('סמן את הקישור והעתק ידנית.'));
 });
-$('bBatch').addEventListener('click',()=>{
-  $('batchTxt').textContent=sync.live?'לאפס את נתוני הסריקה בכל המכשירים בקו '+cfg.line+'? המונים והיומן יתחילו מאפס בכל הטלפונים. הרשומות הקודמות נשמרות בשרת, וכדאי להוריד CSV לפני כן.':'לאפס את נתוני הסריקה במכשיר הזה? כדאי להוריד CSV לפני כן.';
-  $('batchAsk').hidden=!$('batchAsk').hidden;
-});
-$('bBatchNo').addEventListener('click',()=>{$('batchAsk').hidden=true});
-$('bBatchYes').addEventListener('click',()=>{
-  $('batchAsk').hidden=true;
-  if(phase==='verdict'||live.start||pkg.qr||pkg.c128)resetPkg();
-  if(sync.live){track(sync.lineRef.set({batch:'b'+Date.now().toString(36),startedAt:Date.now(),by:cfg.devName}));status('נתוני הסריקה אופסו בכל המכשירים.')}
-  else{log=[];saveLog();render();status('נתוני הסריקה אופסו.')}
-});
-
 /* ---------- decoding ---------- */
 // Only the label's own symbologies plus Data Matrix. Other 1D types (EAN-8, UPC, Code 39/93, ITF…)
 // are left out: partial or blurry reads of a good EAN-13 often decode as one of them.
