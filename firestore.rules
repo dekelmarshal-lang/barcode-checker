@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // A line is reachable only by its exact code; lines cannot be listed.
+    match /lines/{line} {
+      allow get: if true;
+      allow create, update: if request.resource.data.batch is string
+                            && request.resource.data.batch.size() < 40;
+
+      match /batches/{batch}/scans/{scan} {
+        allow read: if true;
+        allow create: if request.resource.data.r in ['ok', 'err']
+                      && request.resource.data.ct is number;
+        allow delete: if true;
+      }
+
+      match /batches/{batch}/counters/{device} {
+        allow read, write: if true;
+      }
+    }
+  }
+}

@@ -10,12 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: one-handed packing-line station — tally tiles on top, camera stage, front/back label slots, big start button, quick-fix actions, log and settings folded below */
+/* Layout: one-handed packing-line station — sync chip and shared tallies on top, camera stage, start button, quick fixes, log / sync / settings folded below */
 :root{
   --bg:#eef1f3; --surface:#ffffff; --sunken:#e3e8eb; --line:#cfd6db;
   --ink:#16222b; --muted:#56646e; --accent:#0b5d7a; --accent-ink:#ffffff;
-  --ok:#147a39; --rej:#a35200; --err:#b3261e;
-  --ok-fill:#17853f; --rej-fill:#b45309; --err-fill:#c0281f;
+  --ok:#147a39; --err:#b3261e; --warn:#a35200; --off:#7b8790;
+  --ok-fill:#17853f; --err-fill:#c0281f;
   --warn-bg:#fdf0d8; --warn-ink:#7a4300;
   --stage:#0c1216;
   --f-display:"Rubik","IBM Plex Sans Hebrew",system-ui,sans-serif;
@@ -26,15 +26,15 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1519; --surface:#172027; --sunken:#111a20; --line:#2a3943;
   --ink:#e8eef2; --muted:#9aaab4; --accent:#4fb3d6; --accent-ink:#06222c;
-  --ok:#5ccf83; --rej:#f2a54a; --err:#ff8a80;
-  --ok-fill:#17853f; --rej-fill:#b45309; --err-fill:#b3261e;
+  --ok:#5ccf83; --err:#ff8a80; --warn:#f2a54a; --off:#7d8b94;
+  --ok-fill:#17853f; --err-fill:#b3261e;
   --warn-bg:#33260f; --warn-ink:#f3c06d;
   --stage:#05080a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1519; --surface:#172027; --sunken:#111a20; --line:#2a3943;
   --ink:#e8eef2; --muted:#9aaab4; --accent:#4fb3d6; --accent-ink:#06222c;
-  --ok:#5ccf83; --rej:#f2a54a; --err:#ff8a80;
-  --ok-fill:#17853f; --rej-fill:#b45309; --err-fill:#b3261e;
+  --ok:#5ccf83; --err:#ff8a80; --warn:#f2a54a; --off:#7d8b94;
+  --ok-fill:#17853f; --err-fill:#b3261e;
   --warn-bg:#33260f; --warn-ink:#f3c06d;
   --stage:#05080a; color-scheme:dark}
 *{box-sizing:border-box}
@@ -42,17 +42,9 @@
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.45;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 .wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:10px 32px;display:grid;gap:10px}
-header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 h1{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0;flex:1}
-.meta{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
-
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 12px 8px;display:grid;min-width:0}
-.tile span{font-size:.85rem;font-weight:600;color:var(--muted)}
-.tile b{font-family:var(--f-mono);font-weight:600;font-size:1.9rem;line-height:1.1;font-variant-numeric:tabular-nums}
-.tile.ok b{color:var(--ok)} .tile.rej b{color:var(--rej)} .tile.err b{color:var(--err)}
-@media (prefers-reduced-motion:no-preference){.tile b.bump{animation:bump .25s ease-out}}
-@keyframes bump{from{transform:scale(1.18)}to{transform:none}}
+.meta{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;text-align:center}
 
 button,.btn{font:inherit;font-weight:600;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;position:relative;touch-action:manipulation}
 button:focus-visible,.btn:focus-within,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -60,48 +52,49 @@ button:disabled{opacity:.45;cursor:default}
 .btn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .icon{width:22px;height:22px;flex:none}
 
+.sync{min-height:36px;padding:4px 12px;border-radius:99px;font-size:.85rem;font-weight:600;gap:6px;max-width:100%}
+.sync .dot{width:10px;height:10px;border-radius:50%;background:var(--off);flex:none}
+.sync.ok .dot{background:var(--ok)} .sync.warn .dot{background:var(--warn)} .sync.err .dot{background:var(--err)}
+.sync.err{color:var(--err)}
+#syncTxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 14px 8px;display:grid;min-width:0}
+.tile span{font-size:.9rem;font-weight:600;color:var(--muted)}
+.tile b{font-family:var(--f-mono);font-weight:600;font-size:2.3rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile.ok b{color:var(--ok)} .tile.err b{color:var(--err)}
+@media (prefers-reduced-motion:no-preference){.tile b.bump{animation:bump .25s ease-out}}
+@keyframes bump{from{transform:scale(1.15)}to{transform:none}}
+
 .stage{position:relative;background:var(--stage);border-radius:16px;overflow:hidden;aspect-ratio:4/3;max-width:100%;color:#fff}
 .stage video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.frame{position:absolute;inset:12% 8%;border:3px solid rgba(255,255,255,.8);border-radius:14px;pointer-events:none;display:grid;place-items:center}
+.frame{position:absolute;inset:14% 14%;border:3px solid rgba(255,255,255,.8);border-radius:14px;pointer-events:none;display:grid;place-items:center}
 .frame.wait{border-style:dashed;border-color:#f3c06d}
-.frame .fh{background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 12px;border-radius:8px;font-size:.95rem}
+.frame .fh{background:rgba(0,0,0,.65);color:#fff;font-weight:600;padding:6px 12px;border-radius:8px;font-size:.95rem;text-align:center}
 .idle{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;padding:20px;text-align:center}
 .idle p{margin:0;color:#c9d4da;font-size:.95rem;max-width:36ch}
 .idle p.err{color:#ffd0cc}
 .tool{position:absolute;top:10px;min-height:44px;min-width:44px;padding:8px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.35)}
 .tool.on{background:#fff;color:#000}
 #bTorch{inset-inline-start:10px} #bStop{inset-inline-end:10px}
+.expect{position:absolute;bottom:8px;inset-inline:0;text-align:center;font-size:.85rem;color:#e6edf1;pointer-events:none}
+.expect code{font-family:var(--f-mono);background:rgba(0,0,0,.5);padding:2px 8px;border-radius:6px}
 
 .result{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;padding:18px;text-align:center;color:#fff}
-.result.ok{background:var(--ok-fill)} .result.rej{background:var(--rej-fill)} .result.err{background:var(--err-fill)}
-.result svg{width:80px;height:80px}
-.result .big{font-family:var(--f-display);font-weight:700;font-size:2.6rem;line-height:1}
-.result .why{font-size:1rem;max-width:36ch;opacity:.95;font-variant-numeric:tabular-nums}
+.result.ok{background:var(--ok-fill)} .result.err{background:var(--err-fill)}
+.result svg{width:84px;height:84px}
+.result .big{font-family:var(--f-display);font-weight:700;font-size:2.8rem;line-height:1}
+.result .why{font-size:1.02rem;max-width:36ch;opacity:.96;font-variant-numeric:tabular-nums;display:grid;gap:2px}
 .result button{margin-top:8px;background:#fff;color:#111;border:none;min-width:210px;font-size:1.15rem;min-height:56px}
 .result .bar{height:4px;background:rgba(255,255,255,.85);border-radius:2px;width:160px;transform-origin:right}
-@media (prefers-reduced-motion:no-preference){.result .bar{animation:shrink var(--dur,.7s) linear forwards}}
+@media (prefers-reduced-motion:no-preference){.result .bar{animation:shrink var(--dur,.6s) linear forwards}}
 @keyframes shrink{to{transform:scaleX(0)}}
-
-.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.slot{background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0;display:grid;gap:0}
-.slot .h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:.95rem}
-.slot .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;flex:none;font-size:.8rem;line-height:1}
-.slot .exp{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);direction:ltr;text-align:right}
-.slot .st{font-size:.88rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot.full{border-color:var(--accent)}
-.slot.full .dot{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.slot.full .st{color:var(--ink);font-weight:600}
-.slot.off{opacity:.5}
 
 .main{width:100%;min-height:64px;font-size:1.2rem;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .status{min-height:1.4em;font-size:.95rem;color:var(--muted);text-align:center}
 .status.err{color:var(--err);font-weight:600}
-.unk{background:var(--warn-bg);color:var(--warn-ink);border-radius:12px;padding:8px 8px 8px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.unk .t{flex:1 1 180px;min-width:0;font-size:.92rem}
-.unk code{font-family:var(--f-mono);direction:ltr;unicode-bidi:isolate;word-break:break-all}
-.unk button{min-height:44px;font-size:.92rem}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.actions button,.actions .btn{min-height:48px;font-size:.95rem}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.actions button,.actions .btn{flex-direction:column;gap:2px;min-height:64px;font-size:.88rem;padding:6px 4px;text-align:center}
 .scan input{width:100%;font-family:var(--f-mono);font-size:1rem;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:52px}
 
 details{background:var(--surface);border:1px solid var(--line);border-radius:12px}
@@ -111,21 +104,30 @@ summary .chev{margin-inline-start:auto;transition:transform .15s}
 details[open] summary .chev{transform:rotate(180deg)}
 .inner{padding:0 14px 14px;display:grid;gap:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.row button{min-height:44px;font-size:.92rem}
+.row button,.inner>button{min-height:44px;font-size:.92rem}
+.field{display:grid;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
+.field input{font-family:var(--f-mono);font-size:1rem;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--sunken);color:var(--ink);min-height:44px;width:100%}
+.field.he input{font-family:var(--f-body)}
+.inline{display:flex;gap:8px;align-items:end}
+.inline .field{flex:1}
+.inline button{min-height:44px;font-size:.92rem}
 .opt{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
 .opt input{width:22px;height:22px;accent-color:var(--accent);flex:none}
-.opt small{display:block;color:var(--muted);font-size:.85rem}
-.vals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.vals label{display:grid;gap:4px;font-size:.82rem;color:var(--muted);min-width:0}
-.vals input{font-family:var(--f-mono);font-size:.95rem;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--sunken);color:var(--ink);min-height:44px;width:100%}
+.note{font-size:.88rem;color:var(--muted);margin:0}
+.note.err{color:var(--err)}
+.link{font-family:var(--f-mono);font-size:.8rem;direction:ltr;text-align:left;background:var(--sunken);border-radius:8px;padding:8px 10px;word-break:break-all;user-select:all}
+.devs{list-style:none;margin:0;padding:0;display:grid}
+.devs li{display:grid;grid-template-columns:1fr auto auto;gap:12px;padding:6px 0;border-top:1px solid var(--line);font-size:.9rem;font-variant-numeric:tabular-nums;align-items:center}
+.devs .ok{color:var(--ok);font-family:var(--f-mono)} .devs .err{color:var(--err);font-family:var(--f-mono)}
+.devs .me{font-weight:700}
+.devs .idle-dev{color:var(--muted)}
 .log{list-style:none;margin:0;padding:0;display:grid}
 .log li{display:grid;grid-template-columns:auto auto auto 1fr;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:.9rem;font-variant-numeric:tabular-nums}
-.log .n{color:var(--muted);font-family:var(--f-mono);font-size:.8rem;min-width:3ch}
 .log .t{color:var(--muted);font-family:var(--f-mono);font-size:.8rem}
+.log .dv{color:var(--muted);font-size:.8rem;white-space:nowrap;max-width:9ch;overflow:hidden;text-overflow:ellipsis}
 .log .d{font-size:.82rem;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill{font-size:.8rem;font-weight:700;border-radius:99px;padding:2px 10px;white-space:nowrap;border:1.5px solid currentColor}
-.pill.ok{color:var(--ok)} .pill.rej{color:var(--rej)} .pill.err{color:#fff;background:var(--err-fill);border-color:var(--err-fill)}
-.muted{color:var(--muted);font-size:.9rem;margin:0}
+.pill.ok{color:var(--ok)} .pill.err{color:#fff;background:var(--err-fill);border-color:var(--err-fill)}
 textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--sunken);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 </style>
@@ -134,18 +136,19 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 <div class="wrap">
   <header>
     <h1>בודק תוויות אריזה</h1>
-    <span class="meta" id="meta">סה״כ 0</span>
+    <button class="sync off" id="sync" type="button" aria-label="מצב סנכרון"><span class="dot" aria-hidden="true"></span><span id="syncTxt">מקומי בלבד</span></button>
   </header>
 
   <div class="tiles" aria-live="polite">
     <div class="tile ok"><span>תקינות</span><b id="nOk">0</b></div>
-    <div class="tile rej"><span>פסולות</span><b id="nRej">0</b></div>
     <div class="tile err"><span>שגיאות</span><b id="nErr">0</b></div>
   </div>
+  <div class="meta" id="meta">סה״כ 0</div>
 
   <div class="stage" id="stage">
     <video id="vid" playsinline muted hidden></video>
     <div class="frame" id="frame" hidden><span class="fh" id="frameHint" hidden>הרחק את האריזה מהמצלמה</span></div>
+    <div class="expect" id="expect" hidden>צפוי: <code id="expVal">QR · D16099</code></div>
     <button class="tool" id="bTorch" type="button" hidden aria-label="פנס" aria-pressed="false">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2h10l-2 6H9zM9 8v12a1 1 0 001 1h4a1 1 0 001-1V8M12 12v3"/></svg>
     </button>
@@ -154,27 +157,9 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
     </button>
     <div class="idle" id="idle">
       <svg viewBox="0 0 64 64" width="60" height="60" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M6 18V6h12M46 6h12v12M58 46v12H46M18 58H6V46"/><rect x="18" y="18" width="12" height="12"/><rect x="36" y="34" width="10" height="10"/><path d="M36 18h10v10M18 36v10h10"/></svg>
-      <p id="idleMsg">לחץ "התחל סריקה" וסרוק בכל אריזה את התווית הקדמית ואת האחורית, בכל סדר.</p>
+      <p id="idleMsg">לחץ "התחל סריקה" וכוון לתווית האחורית של כל אריזה. QR עם הערך <bdi id="idleVal">D16099</bdi> נחשב תקין, כל דבר אחר הוא שגיאה.</p>
     </div>
     <div class="result" id="result" hidden role="alert"></div>
-  </div>
-
-  <div class="slots">
-    <div class="slot" id="s-front">
-      <div class="h"><span class="dot" aria-hidden="true"></span>קדמית</div>
-      <div class="exp" id="e-front">D19960</div>
-      <div class="st" id="t-front">ממתין</div>
-    </div>
-    <div class="slot" id="s-back">
-      <div class="h"><span class="dot" aria-hidden="true"></span>אחורית</div>
-      <div class="exp" id="e-back">D19961 / D16099</div>
-      <div class="st" id="t-back">ממתין</div>
-    </div>
-  </div>
-
-  <div class="unk" id="unk" hidden role="status">
-    <div class="t">נסרק קוד לא מוכר: <code id="unkVal"></code></div>
-    <button type="button" id="bUnkErr">רשום כשגיאה</button>
   </div>
 
   <button class="main" id="bMain" type="button">
@@ -192,10 +177,6 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
       בטל אחרונה
     </button>
-    <button type="button" id="bReset">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg>
-      נקה אריזה
-    </button>
     <label class="btn">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
       צילום תמונה
@@ -209,37 +190,49 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
   </div>
 
   <details id="logBox">
-    <summary>יומן סריקות <span class="muted" id="logCount"></span><svg class="chev icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <summary>יומן סריקות <span class="note" id="logCount"></span><svg class="chev icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
     <div class="inner">
       <div class="row">
         <button type="button" id="bCsv">הורד CSV</button>
         <button type="button" id="bCopy">העתק לאקסל</button>
       </div>
-      <button type="button" id="bClear" style="min-height:44px;font-size:.92rem">איפוס מונים ויומן</button>
-      <div id="clearAsk" hidden>
-        <p class="muted" id="clearTxt"></p>
-        <div class="row" style="margin-top:8px">
-          <button type="button" id="bClearYes" style="color:var(--err)">מחק הכל</button>
-          <button type="button" id="bClearNo">ביטול</button>
-        </div>
-      </div>
+      <p class="note" id="logScope"></p>
       <textarea id="csvOut" rows="5" readonly dir="ltr" hidden></textarea>
       <ul class="log" id="log"></ul>
-      <p class="muted" id="logEmpty">כל אריזה שנבדקת נרשמת כאן אוטומטית.</p>
+      <p class="note" id="logEmpty">כל אריזה שנבדקת נרשמת כאן אוטומטית.</p>
+    </div>
+  </details>
+
+  <details id="syncBox">
+    <summary>סנכרון בין מכשירים<svg class="chev icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <div class="inner">
+      <p class="note" id="syncDetail"></p>
+      <div class="inline">
+        <label class="field">קוד קו (זהה בכל המכשירים)<input id="vLine" dir="ltr" autocomplete="off" spellcheck="false" placeholder="למשל haifa-line3"></label>
+        <button type="button" id="bLine">התחבר</button>
+      </div>
+      <label class="field he">שם המכשיר הזה<input id="vDev" autocomplete="off" spellcheck="false"></label>
+      <div id="joinBox" hidden>
+        <p class="note">קישור הצטרפות. מכשיר שפותח אותו מתחבר לאותו קו:</p>
+        <div class="link" id="joinLink"></div>
+        <button type="button" id="bJoin" style="margin-top:8px;width:100%;min-height:44px;font-size:.92rem">העתק קישור</button>
+      </div>
+      <ul class="devs" id="devs"></ul>
+      <button type="button" id="bBatch">התחל אצווה חדשה</button>
+      <div id="batchAsk" hidden>
+        <p class="note" id="batchTxt"></p>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="bBatchYes" style="color:var(--err)">כן, אפס</button>
+          <button type="button" id="bBatchNo">ביטול</button>
+        </div>
+      </div>
     </div>
   </details>
 
   <details>
     <summary>הגדרות<svg class="chev icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></summary>
     <div class="inner">
-      <div class="vals">
-        <label>קדמית<input id="vFront" dir="ltr" autocomplete="off" spellcheck="false"></label>
-        <label>אחורית תקינה<input id="vOk" dir="ltr" autocomplete="off" spellcheck="false"></label>
-        <label>אחורית פסולה<input id="vRej" dir="ltr" autocomplete="off" spellcheck="false"></label>
-      </div>
-      <label class="opt"><input type="checkbox" id="oNeedFront"><span>חובה לסרוק תווית קדמית<small>כבוי: כל סריקה של תווית אחורית נספרת מיד כאריזה.</small></span></label>
-      <label class="opt"><input type="checkbox" id="oCheckSym"><span>בדוק את סוג הברקוד האחורי<small>תקינה חייבת להיות Data Matrix, ופסולה חייבת להיות QR.</small></span></label>
-      <label class="opt"><input type="checkbox" id="oStopRej"><span>עצור על אריזה פסולה<small>מחייב לחיצה על "הבא" לפני האריזה הבאה.</small></span></label>
+      <label class="field">ערך תקין (ברקוד QR)<input id="vVal" dir="ltr" autocomplete="off" spellcheck="false"></label>
       <label class="opt"><input type="checkbox" id="oSound"><span>צליל ורטט</span></label>
     </div>
   </details>
@@ -247,50 +240,44 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
+/* ===== Live sync: paste the firebaseConfig object from the Firebase console here.
+   Leave null to run on this device only. ===== */
+const FIREBASE_CONFIG = null;
+
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 
-/* ---------- settings & log ---------- */
-const DEF={front:'D19960',ok:'D19961',rej:'D16099',needFront:true,checkSym:true,stopRej:false,sound:true};
-const cfg=Object.assign({},DEF);
-try{Object.assign(cfg,JSON.parse(localStorage.getItem('pkg-cfg')||'{}'))}catch(e){}
-let log=[];
-try{log=JSON.parse(localStorage.getItem('pkg-log')||'[]');if(!Array.isArray(log))log=[]}catch(e){log=[]}
-const saveCfg=()=>{try{localStorage.setItem('pkg-cfg',JSON.stringify(cfg))}catch(e){}};
-const saveLog=()=>{try{localStorage.setItem('pkg-log',JSON.stringify(log))}catch(e){}};
+/* ---------- settings ---------- */
+function cleanLine(s){return String(s||'').trim().replace(/[^\w֐-׿-]/g,'').slice(0,40)}
+const DEF={val:'D16099',sound:true,line:'',devName:''};
+const cfg=Object.assign({},DEF,store.get('qr-cfg',{}));
+let devId=store.get('qr-dev',null);
+if(!devId){devId='d'+Math.random().toString(36).slice(2,10);store.set('qr-dev',devId)}
+if(!cfg.devName)cfg.devName='טלפון '+(100+Math.floor(Math.random()*900));
+const hm=location.hash.match(/[#&]line=([^&]+)/);
+if(hm){try{cfg.line=cleanLine(decodeURIComponent(hm[1]))}catch(e){}history.replaceState(null,'',location.pathname+location.search)}
+const saveCfg=()=>store.set('qr-cfg',cfg);
+saveCfg();
+let log=store.get('qr-log',[]);if(!Array.isArray(log))log=[];
+const saveLog=()=>{if(log.length>6000)log=log.slice(-5000);store.set('qr-log',log)};
 
 /* ---------- values ---------- */
-const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',cbar:'Codabar',pdf:'PDF417',aztec:'Aztec'};
-const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',F:'cbar',L:'pdf',z:'aztec'};
+const SYM={qr:'QR',dm:'Data Matrix',c128:'Code 128',c39:'Code 39',c93:'Code 93',cbar:'Codabar',pdf:'PDF417',aztec:'Aztec',itf:'ITF'};
+const AIM={Q:'qr',d:'dm',C:'c128',A:'c39',G:'c93',F:'cbar',L:'pdf',z:'aztec',I:'itf'};
 // keyboard-wedge scanners on a Hebrew keyboard layout type Hebrew letters instead of Latin ones
 const HEB={'ש':'A','נ':'B','ב':'C','ג':'D','ק':'E','כ':'F','ע':'G','י':'H','ן':'I','ח':'J','ל':'K','ך':'L','צ':'M','מ':'N','ם':'O','פ':'P','ר':'R','ד':'S','א':'T','ו':'U','ה':'V','ס':'X','ט':'Y','ז':'Z','ף':';','ת':',','ץ':'.'};
+const unHeb=t=>String(t).replace(/[א-ת]/g,c=>HEB[c]||c);
 const clean=t=>String(t).replace(/^\][A-Za-z][0-9A-Za-z]/,'').replace(/[\u0000-\u001f\u007f\s]/g,'').toUpperCase();
-const TITLE={ok:'תקינה',rej:'פסולה',err:'שגיאה'};
-function classify(text){
-  const v=clean(text);
-  if(v&&v===clean(cfg.front))return'front';
-  if(v&&v===clean(cfg.ok))return'ok';
-  if(v&&v===clean(cfg.rej))return'rej';
-  return null;
-}
+const TITLE={ok:'תקין',err:'שגיאה'};
 const esc=s=>String(s).replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]));
+const want=()=>clean(cfg.val);
 
 /* ---------- state ---------- */
-let pkg={front:null,back:null}, phase='scan', ackNeeded=false, autoT=null;
-
+let phase='scan',ackNeeded=false,autoT=null;
 function status(t,err){const s=$('status');s.textContent=t||'';s.className='status'+(err?' err':'')}
-function renderSlots(){
-  const f=$('s-front'),b=$('s-back');
-  $('e-front').textContent=clean(cfg.front);
-  $('e-back').textContent=clean(cfg.ok)+' / '+clean(cfg.rej);
-  f.classList.toggle('full',!!pkg.front);f.classList.toggle('off',!cfg.needFront&&!pkg.front);
-  f.querySelector('.dot').textContent=pkg.front?'✓':'';
-  $('t-front').textContent=pkg.front?'נקלטה':(cfg.needFront?'ממתין':'לא נדרש');
-  b.classList.toggle('full',!!pkg.back);
-  b.querySelector('.dot').textContent=pkg.back?'✓':'';
-  $('t-back').textContent=pkg.back?(TITLE[pkg.back.kind]+(pkg.back.sym?' · '+SYM[pkg.back.sym]:'')):'ממתין';
-}
 
 /* ---------- sound ---------- */
 let actx=null;
@@ -298,158 +285,272 @@ function unlockAudio(){try{actx=actx||new(window.AudioContext||window.webkitAudi
 function tone(f,d,w,type){if(!actx)return;try{const o=actx.createOscillator(),g=actx.createGain();o.type=type||'sine';o.frequency.value=f;o.connect(g);g.connect(actx.destination);const t=actx.currentTime+(w||0);g.gain.setValueAtTime(.22,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.start(t);o.stop(t+d)}catch(e){}}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 const fx={
-  capture(){if(cfg.sound){tone(1050,.06);vib(25)}},
   ok(){if(cfg.sound){tone(880,.09);tone(1320,.12,.1);vib(50)}},
-  rej(){if(cfg.sound){tone(520,.16,0,'triangle');tone(520,.16,.2,'triangle');vib([120,60,120])}},
   err(){if(cfg.sound){tone(190,.35,0,'square');tone(150,.45,.38,'square');vib([300,100,300,100,300])}},
-  unknown(){if(cfg.sound){tone(330,.12,0,'triangle');vib(80)}}
+  nope(){if(cfg.sound){tone(330,.12,0,'triangle');vib(80)}}
 };
 
-/* ---------- flow ---------- */
-function accept(text,sym){
-  if(phase!=='scan')return'busy';
-  const role=classify(text);
-  if(!role){unknown(text,sym);return'unknown'}
-  hideUnknown();
-  if(role==='front'){
-    if(pkg.front)return'dup';
-    pkg.front={text,sym};
-  }else{
-    if(pkg.back){
-      if(pkg.back.kind===role)return'dup';
-      return finish('err','שתי תוויות אחוריות שונות באותה אריזה ('+clean(pkg.back.text)+' ו-'+clean(text)+')',false,{kind:role,text,sym});
-    }
-    pkg.back={kind:role,sym,text};
-    if(cfg.checkSym&&sym){
-      const want=role==='ok'?'dm':'qr';
-      if(sym!==want)return finish('err','הערך '+clean(text)+' ('+TITLE[role]+') הגיע ב-'+SYM[sym]+' במקום '+SYM[want]);
-    }
-  }
-  renderSlots();
-  if(pkg.back&&(pkg.front||!cfg.needFront))return finish(pkg.back.kind);
-  fx.capture();
-  status(pkg.front?'קדמית נקלטה. עכשיו התווית האחורית.':'אחורית נקלטה. עכשיו התווית הקדמית.');
-  return'part';
+/* ---------- verdict ---------- */
+// found: codes read together (one camera frame, one photo or one scanner read)
+function evaluate(found){
+  if(phase!=='scan'||!found.length)return;
+  const good=found.find(f=>clean(f.text)===want()&&(f.sym==='qr'||!f.sym));
+  if(good)return record('ok',good);
+  const f=found.find(f=>clean(f.text)===want())||found[0];
+  const v=clean(f.text),why=[];
+  if(f.sym&&f.sym!=='qr')why.push('סוג ברקוד: '+SYM[f.sym]+' (צפוי QR)');
+  if(v!==want())why.push('ערך: '+(v?v.slice(0,40):'ריק')+' (צפוי '+want()+')');
+  record('err',f,why.join('\n'));
 }
 const ICON={
   ok:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 13-15"/></svg>',
-  rej:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M9.5 38.5l29-29"/></svg>',
   err:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 4l21 38H3z"/><path d="M24 18v11M24 35.5v.5"/></svg>'
 };
-function finish(level,why,manual,extra){
+function record(level,f,why,manual){
   phase='verdict';
-  const e={t:Date.now(),r:level,f:pkg.front?1:0};
-  if(pkg.back){e.b=clean(pkg.back.text);if(pkg.back.sym)e.s=pkg.back.sym}
-  if(extra)e.b2=clean(extra.text);
+  const e={id:devId+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),r:level};
+  if(f){e.v=clean(f.text).slice(0,120);if(f.sym)e.s=f.sym}
   if(why)e.w=why;
-  log.push(e);saveLog();renderLog(level);renderSlots();hideUnknown();
-  ackNeeded=(level==='err'&&!manual)||(level==='rej'&&cfg.stopRej);
-  const dur=level==='ok'?650:level==='rej'?1000:900;
-  const sub=level==='ok'?clean(cfg.ok)+' · Data Matrix':level==='rej'?clean(cfg.rej)+' · QR':why;
+  if(sync.db&&sync.batch){e.b=sync.batch;syncWrite(e)}
+  log.push(e);saveLog();render(level);
+  ackNeeded=level==='err'&&!manual;
+  const dur=level==='ok'?600:900;
+  const sub=level==='ok'?'QR · '+want():why;
   const el=$('result');el.className='result '+level;el.hidden=false;
-  el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+esc(sub)+'</div>'+
-    (ackNeeded?'<button type="button" id="bAck">'+(level==='err'?'אשר והמשך':'הבא')+'</button>':'<div class="bar" style="--dur:'+dur+'ms"></div>');
+  el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
+    (ackNeeded?'<button type="button" id="bAck">אשר והמשך</button>':'<div class="bar" style="--dur:'+dur+'ms"></div>');
   fx[level]();
   if(ackNeeded){
     $('bAck').addEventListener('click',next);
-    if(!scannerActive())$('bAck').focus({preventScroll:true});
-    status(level==='err'?'שגיאה. הפרד את האריזה ולחץ "אשר והמשך".':'אריזה פסולה. הפרד אותה ולחץ "הבא".',level==='err');
+    if(document.activeElement!==$('scanIn'))$('bAck').focus({preventScroll:true});
+    status('שגיאה. הפרד את האריזה ולחץ "אשר והמשך".',true);
   }else{autoT=setTimeout(next,dur);status('')}
-  return level;
 }
 function next(){
-  clearTimeout(autoT);autoT=null;
-  pkg={front:null,back:null};phase='scan';ackNeeded=false;
-  $('result').hidden=true;renderSlots();
+  clearTimeout(autoT);autoT=null;phase='scan';ackNeeded=false;$('result').hidden=true;
   status(stream?'מוכן לאריזה הבאה.':'');
   if(isDesktop)$('scanIn').focus({preventScroll:true});
 }
-function resetPkg(){clearTimeout(autoT);pkg={front:null,back:null};phase='scan';ackNeeded=false;$('result').hidden=true;hideUnknown();renderSlots();status('האריזה נוקתה. אפשר לסרוק מחדש.')}
-function captured(){const p=[];if(pkg.front)p.push('קדמית');if(pkg.back)p.push('אחורית '+TITLE[pkg.back.kind]);return p.length?' (נקלט: '+p.join(', ')+')':''}
 
-let unkT=null;
-function unknown(text,sym){
-  const v=clean(text)||String(text).trim();
-  $('unkVal').textContent=v.slice(0,60)+(sym?' · '+SYM[sym]:'');
-  $('unk').dataset.v=v.slice(0,60);
-  $('unk').hidden=false;fx.unknown();
-  clearTimeout(unkT);unkT=setTimeout(hideUnknown,8000);
-}
-function hideUnknown(){clearTimeout(unkT);$('unk').hidden=true}
-
-/* ---------- log ---------- */
-let lastCounts={ok:-1,rej:-1,err:-1};
-function renderLog(bump){
-  const c={ok:0,rej:0,err:0};log.forEach(e=>{if(c[e.r]!==undefined)c[e.r]++});
-  [['ok','nOk'],['rej','nRej'],['err','nErr']].forEach(([k,id])=>{
-    const el=$(id);el.textContent=c[k].toLocaleString('he-IL');
-    if(bump===k&&lastCounts[k]!==c[k]){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump')}
+/* ---------- counts & log ---------- */
+const scoped=()=>log.filter(e=>!e.u&&(sync.batch?e.b===sync.batch:!e.b));
+let last={ok:-1,err:-1};
+function render(bump){
+  const mine=scoped();let ok=0,err=0;
+  if(sync.live){for(const c of Object.values(sync.counters)){ok+=c.ok;err+=c.err}}
+  else mine.forEach(e=>{e.r==='ok'?ok++:err++});
+  [['ok','nOk',ok],['err','nErr',err]].forEach(([k,id,n])=>{
+    const el=$(id);el.textContent=n.toLocaleString('he-IL');
+    if(bump===k&&last[k]!==n){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump')}
+    last[k]=n;
   });
-  lastCounts=c;
-  renderMeta();
-  $('logCount').textContent=log.length?'('+log.length.toLocaleString('he-IL')+')':'';
-  $('logEmpty').hidden=log.length>0;
-  $('bUndo').disabled=!log.length;
-  if(!$('logBox').open){$('log').innerHTML='';return}
-  const start=log.length;
-  $('log').innerHTML=log.slice(-60).reverse().map((e,i)=>{
-    const t=new Date(e.t).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    return'<li><span class="n">'+(start-i)+'</span><span class="t">'+t+'</span><span class="pill '+e.r+'">'+TITLE[e.r]+'</span><span class="d" title="'+esc(e.w||'')+'">'+esc(e.w||'')+'</span></li>';
-  }).join('');
-}
-function renderMeta(){
-  const now=Date.now(),w=log.filter(e=>e.t>now-600000);
+  const now=Date.now(),w=mine.filter(e=>e.t>now-600000);
   let pace='';
   if(w.length>=3){const span=(w[w.length-1].t-w[0].t)/60000;if(span>0)pace=' · '+Math.round((w.length-1)/span)+' לדקה'}
-  $('meta').textContent='סה״כ '+log.length.toLocaleString('he-IL')+pace;
+  $('meta').textContent='סה״כ '+(ok+err).toLocaleString('he-IL')+(sync.live?' · במכשיר הזה '+mine.length.toLocaleString('he-IL'):'')+pace;
+  $('bUndo').disabled=!log.some(e=>!e.u);
+  $('logCount').textContent=(ok+err)?'('+(ok+err).toLocaleString('he-IL')+')':'';
+  renderList();
 }
-setInterval(renderMeta,15000);
-$('logBox').addEventListener('toggle',()=>renderLog());
+setInterval(()=>render(),15000);
+function renderList(){
+  if(!$('logBox').open)return;
+  let rows;
+  if(sync.live&&sync.feed){
+    rows=sync.feed.map(x=>({t:x.ct,r:x.r,w:x.w||'',dev:x.dev||''}));
+    $('logScope').textContent='50 הסריקות האחרונות מכל המכשירים בקו. ה-CSV כולל את כל האצווה.';
+  }else{
+    rows=scoped().slice(-50).reverse().map(e=>({t:e.t,r:e.r,w:e.w||'',dev:''}));
+    $('logScope').textContent=FIREBASE_CONFIG?'':'יומן מקומי של המכשיר הזה.';
+  }
+  $('logEmpty').hidden=rows.length>0;
+  $('log').innerHTML=rows.map(x=>{
+    const t=new Date(x.t).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const w=x.w.replace(/\n/g,' · ');
+    return'<li><span class="t">'+t+'</span><span class="pill '+x.r+'">'+TITLE[x.r]+'</span><span class="dv">'+esc(x.dev)+'</span><span class="d" title="'+esc(w)+'">'+esc(w)+'</span></li>';
+  }).join('');
+}
+$('logBox').addEventListener('toggle',()=>{if($('logBox').open){attachFeed();renderList()}else detachFeed()});
 function undo(){
-  if(!log.length){status('אין רשומה לביטול.');return}
-  const e=log.pop();saveLog();
-  if(phase==='verdict'){clearTimeout(autoT);pkg={front:null,back:null};phase='scan';ackNeeded=false;$('result').hidden=true;renderSlots()}
-  renderLog();
-  status('בוטלה הרשומה האחרונה ('+TITLE[e.r]+'). אפשר לסרוק את האריזה שוב.');
+  const e=[...log].reverse().find(x=>!x.u);
+  if(!e){status('אין רשומה לביטול.');return}
+  e.u=1;saveLog();
+  if(e.b&&sync.db)syncUndo(e);
+  if(phase==='verdict'){clearTimeout(autoT);phase='scan';ackNeeded=false;$('result').hidden=true}
+  render();
+  status('בוטלה הסריקה האחרונה של המכשיר הזה ('+TITLE[e.r]+'). אפשר לסרוק את האריזה שוב.');
 }
-function csv(){
-  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
-  const R={ok:'OK',rej:'REJECT',err:'ERROR'};
-  const rows=['#,date,time,result,front_scanned,back_value,back_symbology,details'];
-  log.forEach((e,i)=>{const d=new Date(e.t);
-    rows.push([i+1,d.toLocaleDateString('en-CA'),d.toLocaleTimeString('en-GB'),R[e.r],e.f?'yes':'no',q(e.b||''),q(e.s?SYM[e.s]:''),q(e.w||'')].join(','))});
-  return rows.join('\r\n');
+async function rowsForExport(){
+  if(sync.db&&sync.batch){
+    const snap=await batchRef(sync.batch).collection('scans').orderBy('ct').get();
+    return snap.docs.map(d=>d.data()).map(x=>({t:x.ct,r:x.r,v:x.v,s:x.s,w:x.w,dev:x.dev}));
+  }
+  return scoped().map(e=>({t:e.t,r:e.r,v:e.v,s:e.s,w:e.w,dev:cfg.devName}));
 }
-$('bCsv').addEventListener('click',()=>{
-  if(!log.length){status('היומן ריק.');return}
+async function csv(){
+  const rows=await rowsForExport();
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""').replace(/\n/g,' | ')+'"';
+  const out=['#,date,time,result,value,symbology,device,details'];
+  rows.forEach((x,i)=>{const d=new Date(x.t);out.push([i+1,d.toLocaleDateString('en-CA'),d.toLocaleTimeString('en-GB'),x.r==='ok'?'OK':'ERROR',q(x.v),q(x.s?SYM[x.s]:''),q(x.dev),q(x.w)].join(','))});
+  return{text:out.join('\r\n'),n:rows.length};
+}
+$('bCsv').addEventListener('click',async()=>{
+  status('מכין קובץ…');
+  let c;try{c=await csv()}catch(e){status('לא הצלחתי לקרוא את הרשומות: '+(e.message||e),true);return}
+  if(!c.n){status('אין רשומות באצווה הנוכחית.');return}
   try{
-    const blob=new Blob(['﻿'+csv()],{type:'text/csv;charset=utf-8'});
+    const blob=new Blob(['﻿'+c.text],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a'),d=new Date();
     a.href=URL.createObjectURL(blob);
-    a.download='packages-'+d.toLocaleDateString('en-CA')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.csv';
+    a.download=(cfg.line||'scans')+'-'+d.toLocaleDateString('en-CA')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.csv';
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-    status('הקובץ הורד.');
-  }catch(e){showCsvBox()}
+    status('הורד קובץ עם '+c.n.toLocaleString('he-IL')+' רשומות.');
+  }catch(e){showCsvBox(c.text)}
 });
-function showCsvBox(){const ta=$('csvOut');ta.hidden=false;ta.value=csv();ta.focus();ta.select();status('סמן והעתק את הטקסט מהתיבה.')}
-$('bCopy').addEventListener('click',()=>{
-  if(!log.length){status('היומן ריק.');return}
-  const tsv=csv().replace(/"([^"]*)"/g,'$1').replace(/,/g,'\t');
-  if(navigator.clipboard)navigator.clipboard.writeText(tsv).then(()=>status('הועתק. אפשר להדביק באקסל.'),showCsvBox);else showCsvBox();
+function showCsvBox(t){const ta=$('csvOut');ta.hidden=false;ta.value=t;ta.focus();ta.select();status('סמן והעתק את הטקסט מהתיבה.')}
+$('bCopy').addEventListener('click',async()=>{
+  let c;try{c=await csv()}catch(e){status('לא הצלחתי לקרוא את הרשומות.',true);return}
+  if(!c.n){status('אין רשומות באצווה הנוכחית.');return}
+  const tsv=c.text.replace(/"([^"]*)"/g,'$1').replace(/,/g,'\t');
+  if(navigator.clipboard)navigator.clipboard.writeText(tsv).then(()=>status('הועתקו '+c.n.toLocaleString('he-IL')+' רשומות. אפשר להדביק באקסל.'),()=>showCsvBox(tsv));else showCsvBox(tsv);
 });
-$('bClear').addEventListener('click',()=>{if(!log.length){status('היומן כבר ריק.');return}$('clearTxt').textContent='למחוק '+log.length.toLocaleString('he-IL')+' רשומות ולאפס את המונים? כדאי להוריד CSV לפני כן.';$('clearAsk').hidden=false});
-$('bClearNo').addEventListener('click',()=>{$('clearAsk').hidden=true});
-$('bClearYes').addEventListener('click',()=>{log=[];saveLog();renderLog();$('clearAsk').hidden=true;$('csvOut').hidden=true;status('המונים והיומן אופסו.')});
+
+/* ---------- live sync (Firebase Firestore) ---------- */
+const sync={db:null,lineRef:null,batch:null,batchStart:0,counters:{},live:false,feed:null,pending:0,fromCache:true,err:null,state:'off',unLine:null,unBatch:null,unFeed:null};
+const batchRef=b=>sync.lineRef.collection('batches').doc(b);
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
+async function syncStart(){
+  if(!FIREBASE_CONFIG){sync.state='off';renderSync();return}
+  if(!cfg.line){sync.state='noline';renderSync();return}
+  sync.state='connecting';renderSync();
+  try{
+    if(!window.firebase||!firebase.firestore){await loadScript(FB+'firebase-app-compat.js');await loadScript(FB+'firebase-firestore-compat.js')}
+    if(!sync.db){
+      if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+      sync.db=firebase.firestore();
+      try{await sync.db.enablePersistence({synchronizeTabs:true})}catch(e){}
+    }
+  }catch(e){fail({message:'טעינת רכיב הסנכרון נכשלה. בדוק חיבור לאינטרנט ורענן.'});return}
+  attachLine();
+}
+function fail(err){
+  sync.state='error';
+  const code=err&&err.code||'';
+  sync.err=code==='permission-denied'?'אין הרשאה. בדוק את כללי האבטחה (Rules) ב-Firebase.':(err&&err.message)||String(err);
+  renderSync();
+}
+function detachBatch(){if(sync.unBatch){sync.unBatch();sync.unBatch=null}detachFeed();sync.live=false;sync.counters={};sync.batch=null}
+function attachLine(){
+  if(sync.unLine){sync.unLine();sync.unLine=null}
+  detachBatch();
+  if(!cfg.line){sync.state='noline';renderSync();render();return}
+  sync.state='connecting';sync.err=null;renderSync();
+  sync.lineRef=sync.db.collection('lines').doc(cfg.line);
+  sync.unLine=sync.lineRef.onSnapshot({includeMetadataChanges:true},snap=>{
+    if(!snap.exists){
+      if(sync.batch!=='start')setBatch('start',0);
+      if(!snap.metadata.fromCache)track(sync.lineRef.set({batch:'start',startedAt:Date.now(),by:cfg.devName}));
+      return;
+    }
+    const d=snap.data();
+    if(d.batch!==sync.batch)setBatch(d.batch,d.startedAt||0);
+  },fail);
+}
+function setBatch(b,startedAt){
+  detachBatch();
+  sync.batch=b;sync.batchStart=startedAt;
+  sync.unBatch=batchRef(b).collection('counters').onSnapshot({includeMetadataChanges:true},snap=>{
+    const c={};
+    snap.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});c[d.id]={name:x.name||'מכשיר',ok:x.ok||0,err:x.err||0,at:x.at&&x.at.toMillis?x.at.toMillis():0}});
+    sync.counters=c;sync.live=true;sync.fromCache=snap.metadata.fromCache;
+    if(sync.state!=='error')sync.state='ok';
+    render();renderSync();
+  },fail);
+  if($('logBox').open)attachFeed();
+  render();renderSync();
+}
+function attachFeed(){
+  detachFeed();
+  if(!sync.db||!sync.batch)return;
+  sync.unFeed=batchRef(sync.batch).collection('scans').orderBy('ct','desc').limit(50).onSnapshot(snap=>{
+    sync.feed=snap.docs.map(d=>d.data());renderList();
+  },fail);
+}
+function detachFeed(){if(sync.unFeed){sync.unFeed();sync.unFeed=null}sync.feed=null}
+function track(p){
+  sync.pending++;renderSync();
+  p.then(()=>{sync.pending--;renderSync()},err=>{sync.pending--;fail(err)});
+}
+function syncWrite(e){
+  const F=firebase.firestore.FieldValue,br=batchRef(e.b),wb=sync.db.batch();
+  const doc={r:e.r,ct:e.t,dev:cfg.devName,devId:devId,at:F.serverTimestamp()};
+  if(e.v!=null)doc.v=e.v;if(e.s)doc.s=e.s;if(e.w)doc.w=e.w;
+  wb.set(br.collection('scans').doc(e.id),doc);
+  wb.set(br.collection('counters').doc(devId),{name:cfg.devName,[e.r]:F.increment(1),at:F.serverTimestamp()},{merge:true});
+  track(wb.commit());
+}
+function syncUndo(e){
+  const F=firebase.firestore.FieldValue,br=batchRef(e.b),wb=sync.db.batch();
+  wb.delete(br.collection('scans').doc(e.id));
+  wb.set(br.collection('counters').doc(devId),{[e.r]:F.increment(-1),at:F.serverTimestamp()},{merge:true});
+  track(wb.commit());
+}
+function activeDevs(){const now=Date.now();return Object.values(sync.counters).filter(c=>now-c.at<15*60000).length}
+function renderSync(){
+  let cls='off',t='מקומי בלבד',detail='';
+  if(!FIREBASE_CONFIG){detail='הסנכרון עוד לא הוגדר. כרגע הרשומות נשמרות רק במכשיר הזה.'}
+  else if(sync.state==='error'){cls='err';t='שגיאת סנכרון';detail=sync.err||''}
+  else if(!cfg.line){cls='warn';t='הגדר קוד קו';detail='הזן קוד קו זהה בכל המכשירים שעובדים יחד ולחץ "התחבר".'}
+  else if(!sync.live){cls='warn';t='מתחבר…';detail='מתחבר לקו '+cfg.line+'…'}
+  else if(!navigator.onLine||sync.fromCache){cls='warn';t='לא מחובר'+(sync.pending?' · '+sync.pending+' ממתינות':'');detail='אין חיבור לשרת. הסריקות נשמרות במכשיר ויישלחו אוטומטית כשהחיבור יחזור.'}
+  else{const n=Math.max(1,activeDevs());cls='ok';t='מסונכרן · '+n+' '+(n===1?'מכשיר':'מכשירים')+(sync.pending?' · שולח '+sync.pending:'');
+    detail='מחובר לקו '+cfg.line+(sync.batchStart?' · אצווה מ-'+new Date(sync.batchStart).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'.'}
+  $('sync').className='sync '+cls;$('syncTxt').textContent=t;
+  const sd=$('syncDetail');sd.textContent=detail;sd.className='note'+(cls==='err'?' err':'');
+  const join=FIREBASE_CONFIG&&cfg.line;
+  $('joinBox').hidden=!join;
+  if(join)$('joinLink').textContent=location.origin+location.pathname+'#line='+encodeURIComponent(cfg.line);
+  const now=Date.now();
+  $('devs').innerHTML=sync.live?Object.entries(sync.counters).sort((a,b)=>b[1].at-a[1].at).map(([id,c])=>
+    '<li class="'+(now-c.at>15*60000?'idle-dev':'')+'"><span class="'+(id===devId?'me':'')+'">'+esc(c.name)+(id===devId?' (המכשיר הזה)':'')+'</span><span class="ok">✓ '+c.ok+'</span><span class="err">✗ '+c.err+'</span></li>').join(''):'';
+  $('bBatch').textContent=sync.live?'התחל אצווה חדשה (מאפס את כל המכשירים)':'איפוס מונים ויומן';
+}
+addEventListener('online',renderSync);addEventListener('offline',renderSync);
+$('sync').addEventListener('click',()=>{$('syncBox').open=true;$('syncBox').scrollIntoView({behavior:'smooth',block:'start'})});
+$('bLine').addEventListener('click',()=>{
+  const v=cleanLine($('vLine').value);$('vLine').value=v;
+  if(!v){status('הזן קוד קו (אותיות באנגלית, ספרות או מקף).',true);return}
+  cfg.line=v;saveCfg();
+  if(!FIREBASE_CONFIG){renderSync();status('קוד הקו נשמר. הסנכרון יופעל אחרי חיבור Firebase.');return}
+  sync.db?attachLine():syncStart();
+  status('מתחבר לקו '+v+'.');
+});
+$('vDev').addEventListener('change',()=>{cfg.devName=$('vDev').value.trim().slice(0,30)||cfg.devName;$('vDev').value=cfg.devName;saveCfg();renderSync()});
+$('bJoin').addEventListener('click',()=>{
+  const t=$('joinLink').textContent;
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>status('הקישור הועתק. שלח אותו לשאר המכשירים.'),()=>status('סמן את הקישור והעתק ידנית.'));
+});
+$('bBatch').addEventListener('click',()=>{
+  $('batchTxt').textContent=sync.live?'המונים יתאפסו בכל המכשירים בקו '+cfg.line+'. הרשומות הקודמות נשמרות בשרת. כדאי להוריד CSV לפני כן.':'למחוק את כל היומן המקומי ולאפס את המונים? כדאי להוריד CSV לפני כן.';
+  $('batchAsk').hidden=false;
+});
+$('bBatchNo').addEventListener('click',()=>{$('batchAsk').hidden=true});
+$('bBatchYes').addEventListener('click',()=>{
+  $('batchAsk').hidden=true;
+  if(sync.live){track(sync.lineRef.set({batch:'b'+Date.now().toString(36),startedAt:Date.now(),by:cfg.devName}));status('התחילה אצווה חדשה בכל המכשירים.')}
+  else{log=[];saveLog();render();status('המונים והיומן אופסו.')}
+});
 
 /* ---------- decoding ---------- */
-const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',codabar:'cbar',pdf417:'pdf',aztec:'aztec'};
+// product EAN/UPC codes are left out on purpose so they never trigger errors
+const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',code_39:'c39',code_93:'c93',codabar:'cbar',pdf417:'pdf',aztec:'aztec',itf:'itf'};
 let detector=null;
 (async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('data_matrix'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
 let zx=null,hints=null,ZMAP=null;
 function zxReady(){
   if(zx)return true;if(!window.ZXing)return false;
   const F=ZXing.BarcodeFormat;
-  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.CODABAR,'cbar'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec']].filter(p=>p[0]!==undefined));
+  ZMAP=new Map([[F.QR_CODE,'qr'],[F.DATA_MATRIX,'dm'],[F.CODE_128,'c128'],[F.CODE_39,'c39'],[F.CODE_93,'c93'],[F.CODABAR,'cbar'],[F.PDF_417,'pdf'],[F.AZTEC,'aztec'],[F.ITF,'itf']].filter(p=>p[0]!==undefined));
   zx=new ZXing.MultiFormatReader();hints=new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[...ZMAP.keys()]);
   hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
@@ -481,31 +582,31 @@ function toCanvas(src,max,crop){
 }
 
 /* ---------- live camera ---------- */
-// Every package carries identical codes, so a code is counted once per appearance:
-// it must leave the frame for GAP ms before it can be counted again.
-const GAP=900, seen=new Map();
-let stream=null,track=null,loop=null,busy=false,wake=null,torchOn=false;
+// Every package carries the same QR, so a code counts once per appearance:
+// it must leave the frame for GAP ms before it can count again.
+const GAP=1000,seen=new Map();
+let stream=null,track_=null,loop=null,busy=false,wake=null,torchOn=false;
 async function start(){
   if(stream)return;
   unlockAudio();status('');
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){blocked('none');return}
   try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false})}
   catch(e){stream=null;blocked(e&&e.name);return}
-  track=stream.getVideoTracks()[0];
-  try{track.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
-  const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
+  track_=stream.getVideoTracks()[0];
+  try{track_.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+  const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('expect').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
   try{await v.play()}catch(e){}
-  try{const caps=track.getCapabilities&&track.getCapabilities();$('bTorch').hidden=!(caps&&caps.torch)}catch(e){}
+  try{const caps=track_.getCapabilities&&track_.getCapabilities();$('bTorch').hidden=!(caps&&caps.torch)}catch(e){}
   requestWake();
   $('bMainTxt').textContent='עצור סריקה';
-  status('כוון לתווית הראשונה.');
+  status('כוון לתווית האחורית.');
   tick();
 }
 async function requestWake(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}}
 function stop(){
   clearTimeout(loop);loop=null;
-  if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;torchOn=false;
-  $('vid').hidden=true;$('frame').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;
+  if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track_=null;torchOn=false;
+  $('vid').hidden=true;$('frame').hidden=true;$('expect').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;
   $('bTorch').classList.remove('on');
   try{wake&&wake.release()}catch(e){}wake=null;
   $('bMainTxt').textContent='התחל סריקה';status('');
@@ -524,80 +625,79 @@ async function tick(){
     busy=true;
     let found=[];
     try{found=await native(v);if(!found.length&&zxReady())found=zxAll(toCanvas(v,1000,[.84,.76]))}catch(e){}
-    const now=performance.now();let held=0;
+    const now=performance.now(),fresh=[];let held=0;
     for(const f of found){
       let s=seen.get(f.text);
       if(!s||now-s.t>GAP){s={t:now,used:false};seen.set(f.text,s)}else s.t=now;
       if(s.used){held++;continue}
-      if(phase!=='scan')continue; // keep it unused so it counts as soon as the result clears
-      s.used=true;accept(f.text,f.sym);
+      fresh.push([f,s]);
     }
-    const wait=phase==='scan'&&!pkg.front&&!pkg.back&&found.length>0&&held===found.length;
+    // while a result is showing, new codes stay unused so they count as soon as it clears
+    if(phase==='scan'&&fresh.length){fresh.forEach(([,s])=>s.used=true);evaluate(fresh.map(([f])=>f))}
+    const wait=phase==='scan'&&found.length>0&&held===found.length;
     $('frame').classList.toggle('wait',wait);$('frameHint').hidden=!wait;
     busy=false;
   }
   loop=setTimeout(tick,detector?100:140);
 }
 $('bTorch').addEventListener('click',async()=>{
-  if(!track)return;torchOn=!torchOn;
-  try{await track.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){torchOn=false}
+  if(!track_)return;torchOn=!torchOn;
+  try{await track_.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){torchOn=false}
   $('bTorch').classList.toggle('on',torchOn);$('bTorch').setAttribute('aria-pressed',String(torchOn));
 });
 
 /* ---------- photo & hand scanner ---------- */
+function readyForInput(){
+  if(phase!=='verdict')return true;
+  if(ackNeeded){status('הסריקה לא נקלטה. אשר קודם את השגיאה (Enter ריק או הכפתור).',true);fx.nope();return false}
+  next();return true;
+}
 $('fCam').addEventListener('change',async e=>{
   const file=e.target.files[0];e.target.value='';if(!file)return;
-  unlockAudio();
-  if(phase==='verdict'){if(ackNeeded){status('אשר קודם את התוצאה הקודמת.',true);return}next()}
+  unlockAudio();if(!readyForInput())return;
   status('מפענח…');
   let img=null;try{if(window.createImageBitmap)img=await createImageBitmap(file)}catch(x){}
   if(!img)img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=URL.createObjectURL(file)});
   if(!img){status('לא ניתן לקרוא את התמונה.',true);return}
   let found=await native(img);
-  if(found.length<2)for(const s of[1600,1000,2400]){zxAll(toCanvas(img,s)).forEach(f=>{if(!found.some(x=>x.text===f.text))found.push(f)});if(found.length>=2)break}
+  if(!found.length)for(const s of[1600,1000,2400]){found=zxAll(toCanvas(img,s));if(found.length)break}
   if(!found.length){status('לא נמצא ברקוד. צלם קרוב, ישר ובתאורה טובה.',true);return}
-  status('');
-  found.forEach(f=>accept(f.text,f.sym));
+  status('');evaluate(found);
 });
 let isDesktop=false;try{isDesktop=matchMedia('(pointer:fine)').matches}catch(e){}
-const scannerActive=()=>document.activeElement===$('scanIn');
 $('scanIn').addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;
   e.preventDefault();unlockAudio();
-  let t=e.target.value;e.target.value='';
-  t=t.replace(/[א-ת]/g,c=>HEB[c]||c);
+  const t=unHeb(e.target.value);e.target.value='';
   if(!t.trim()){if(phase==='verdict')next();return}
-  if(phase==='verdict'){
-    if(ackNeeded){status('הסריקה לא נקלטה. אשר קודם את התוצאה (Enter ריק או הכפתור).',true);fx.unknown();return}
-    next();
-  }
+  if(!readyForInput())return;
   const m=t.match(/^\]([A-Za-z])/);
-  accept(t,m?(AIM[m[1]]||null):null);
+  evaluate([{text:t,sym:m?(AIM[m[1]]||null):null}]);
 });
 
 /* ---------- settings ---------- */
 function loadSettings(){
-  $('vFront').value=cfg.front;$('vOk').value=cfg.ok;$('vRej').value=cfg.rej;
-  $('oNeedFront').checked=cfg.needFront;$('oCheckSym').checked=cfg.checkSym;$('oStopRej').checked=cfg.stopRej;$('oSound').checked=cfg.sound;
+  $('vVal').value=cfg.val;$('oSound').checked=cfg.sound;$('vLine').value=cfg.line;$('vDev').value=cfg.devName;
+  $('expVal').textContent='QR · '+want();$('idleVal').textContent=want();
 }
-[['vFront','front'],['vOk','ok'],['vRej','rej']].forEach(([id,k])=>$(id).addEventListener('change',()=>{
-  const v=clean($(id).value.replace(/[א-ת]/g,c=>HEB[c]||c));cfg[k]=v||DEF[k];$(id).value=cfg[k];saveCfg();renderSlots();
-}));
-[['oNeedFront','needFront'],['oCheckSym','checkSym'],['oStopRej','stopRej'],['oSound','sound']].forEach(([id,k])=>$(id).addEventListener('change',()=>{cfg[k]=$(id).checked;saveCfg();renderSlots()}));
+$('vVal').addEventListener('change',()=>{cfg.val=clean(unHeb($('vVal').value))||DEF.val;saveCfg();loadSettings()});
+$('oSound').addEventListener('change',()=>{cfg.sound=$('oSound').checked;saveCfg()});
 
 /* ---------- wiring ---------- */
 $('bMain').addEventListener('click',()=>{stream?stop():start()});
 $('bStop').addEventListener('click',stop);
-$('bReset').addEventListener('click',resetPkg);
 $('bUndo').addEventListener('click',undo);
-$('bMark').addEventListener('click',()=>{unlockAudio();if(phase==='verdict'){if(ackNeeded)next();else return}finish('err','סומנה ידנית'+captured(),true)});
-$('bUnkErr').addEventListener('click',()=>{const v=$('unk').dataset.v||'';if(phase==='verdict'){if(ackNeeded)next();else return}finish('err','קוד לא מוכר: '+v+captured(),true)});
+$('bMark').addEventListener('click',()=>{
+  unlockAudio();
+  if(phase==='verdict'){if(ackNeeded)next();else return}
+  record('err',null,'סומנה ידנית (תווית חסרה או לא קריאה)',true);
+});
 document.addEventListener('keydown',e=>{
-  if(phase==='verdict'&&ackNeeded&&(e.key==='Enter'||e.key===' ')&&!scannerActive()&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}
+  if(phase==='verdict'&&ackNeeded&&(e.key==='Enter'||e.key===' ')&&document.activeElement!==$('scanIn')&&e.target.tagName!=='BUTTON'){e.preventDefault();next()}
 });
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&stream)requestWake()});
 
-loadSettings();renderSlots();renderLog();
+loadSettings();render();renderSync();syncStart();
 if(isDesktop)$('scanIn').focus({preventScroll:true});
 })();
 </script>
