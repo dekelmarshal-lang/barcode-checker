@@ -82,6 +82,11 @@ button:disabled{opacity:.45;cursor:default}
 .tool{position:absolute;top:10px;min-height:44px;min-width:44px;padding:8px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border-color:rgba(255,255,255,.35)}
 .tool.on{background:#fff;color:#000}
 #bTorch{inset-inline-start:10px} #bStop{inset-inline-end:10px}
+.tool.zoom{top:auto;bottom:10px;inset-inline-start:10px;border-radius:99px;min-width:56px;font-family:var(--f-mono);font-size:.95rem}
+.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ring{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border:2px solid #fff;border-radius:50%;pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+@media (prefers-reduced-motion:no-preference){.ring.go{animation:ring .8s ease-out forwards}}
+@keyframes ring{from{transform:scale(1.4);opacity:1}to{transform:scale(1);opacity:0}}
 
 .result{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;padding:18px;text-align:center;color:#fff}
 .result.ok{background:var(--ok-fill)} .result.err{background:var(--err-fill)}
@@ -161,12 +166,15 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
 
   <div class="stage" id="stage">
     <video id="vid" playsinline muted hidden></video>
+    <canvas class="ov" id="ov" aria-hidden="true"></canvas>
+    <div class="ring" id="ring" hidden></div>
     <div class="frame" id="frame" hidden><span class="fh" id="frameHint" hidden>הרחק את האריזה מהמצלמה</span></div>
     <div class="gbar" id="gbar" hidden><i id="gbarFill"></i></div>
     <div class="gtxt" id="gtxt" hidden><span id="gtxtIn"></span></div>
     <button class="tool" id="bTorch" type="button" hidden aria-label="פנס" aria-pressed="false">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2h10l-2 6H9zM9 8v12a1 1 0 001 1h4a1 1 0 001-1V8M12 12v3"/></svg>
     </button>
+    <button class="tool zoom" id="bZoom" type="button" hidden aria-label="זום">1×</button>
     <button class="tool" id="bStop" type="button" hidden aria-label="עצור מצלמה">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -252,6 +260,7 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
         <label class="field">ערך QR<input id="vQr" dir="ltr" autocomplete="off" spellcheck="false"></label>
         <label class="field">ערך ברקוד המוצר<input id="vC" dir="ltr" autocomplete="off" spellcheck="false" inputmode="numeric"></label>
       </div>
+      <label class="field">מצלמה<select id="vCam"><option value="">אוטומטי (מצלמה אחורית)</option></select></label>
       <label class="field">סוג ברקוד המוצר<select id="vSym2"><option value="ean13">EAN-13</option><option value="c128">Code 128</option></select></label>
       <div class="row">
         <label class="field">זמן חסד לקריאת שני הברקודים<select id="vGrace"><option value="2">2 שניות</option><option value="3">3 שניות</option><option value="4">4 שניות</option><option value="6">6 שניות</option></select></label>
@@ -263,7 +272,7 @@ textarea{width:100%;font-family:var(--f-mono);font-size:.8rem;background:var(--s
   </details>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/iife/reader/index.js"></script>
 <script>
 /* ===== Live sync: firebaseConfig from the Firebase console. Set to null to run on each device only. ===== */
 const FIREBASE_CONFIG = {
@@ -283,7 +292,7 @@ const FB='https://www.gstatic.com/firebasejs/10.14.1/';
 
 /* ---------- settings ---------- */
 function cleanLine(s){return String(s||'').trim().replace(/[^\w֐-׿-]/g,'').slice(0,40)}
-const DEF={qr:'D16099',c128:'7290000339566',sym2:'ean13',grace:3,pause:1.2,stopRej:true,sound:true,line:'',devName:''};
+const DEF={qr:'D16099',c128:'7290000339566',sym2:'ean13',grace:3,pause:1.2,zoom:1,cam:'',stopRej:true,sound:true,line:'',devName:''};
 const cfg=Object.assign({},DEF,store.get('qr-cfg',{}));
 if(cfg.val&&!store.get('qr-cfg',{}).qr)cfg.qr=cfg.val;
 delete cfg.val;
@@ -405,7 +414,7 @@ function finish(level,why,manual,extra){
   const dur=level==='ok'?Math.round(cfg.pause*1000):Math.max(1100,Math.round(cfg.pause*1000));
   const sub=level==='ok'?'QR ✓  ·  '+SLOT.c128+' ✓':why;
   const el=$('result');el.className='result '+level;el.hidden=false;
-  el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why">'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
+  el.innerHTML=ICON[level]+'<div class="big">'+TITLE[level]+'</div><div class="why"'+(level==='ok'?' dir="ltr"':'')+'>'+String(sub).split('\n').map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>'+
     (ackNeeded?'<button type="button" id="bAck">אשר והמשך</button>':'<div class="bar" style="--dur:'+dur+'ms"></div>');
   fx[level]();
   if(ackNeeded){
@@ -624,9 +633,39 @@ $('bJoin').addEventListener('click',()=>{
 /* ---------- decoding ---------- */
 // Only the label's own symbologies plus Data Matrix. Other 1D types (EAN-8, UPC, Code 39/93, ITF…)
 // are left out: partial or blurry reads of a good EAN-13 often decode as one of them.
+// Engines, best first: the phone's built-in detector (Android Chrome), zxing-cpp compiled to
+// WebAssembly (fast and tolerant of blur and low contrast), and ZXing-js as a last resort.
 const NAT={qr_code:'qr',data_matrix:'dm',code_128:'c128',ean_13:'ean13'};
 let detector=null;
 (async()=>{try{if('BarcodeDetector'in window){const sup=await BarcodeDetector.getSupportedFormats();const f=Object.keys(NAT).filter(x=>sup.includes(x));if(f.includes('qr_code')&&f.includes('ean_13')&&f.includes('code_128'))detector=new BarcodeDetector({formats:f})}}catch(e){}})();
+async function native(src){
+  if(!detector)return[];
+  try{return(await detector.detect(src)).map(c=>({sym:NAT[c.format]||null,text:c.rawValue,pts:c.cornerPoints||null}))}catch(e){return[]}
+}
+const ZW_URL='https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/reader/';
+const ZWF={QRCode:'qr',DataMatrix:'dm',EAN13:'ean13',Code128:'c128'};
+const ZW_OPTS={formats:['QRCode','DataMatrix','EAN13','Code128'],tryHarder:true,tryRotate:true,tryInvert:false,tryDownscale:true,maxNumberOfSymbols:4};
+let zw=false;
+(function initWasm(){
+  const fallback=()=>loadScript('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js').catch(()=>{});
+  if(!window.ZXingWASM){fallback();return}
+  try{
+    ZXingWASM.prepareZXingModule({overrides:{locateFile:(p,pre)=>p.endsWith('.wasm')?ZW_URL+p:pre+p},fireImmediately:true})
+      .then(()=>{zw=true},()=>{zw=false;fallback()});
+  }catch(e){fallback()}
+})();
+function zwMap(r,g){
+  return r.filter(x=>x.isValid&&x.text).map(x=>{
+    const P=x.position,pts=P?[P.topLeft,P.topRight,P.bottomRight,P.bottomLeft].map(p=>({x:p.x/g.sc+g.sx,y:p.y/g.sc+g.sy})):null;
+    return{sym:ZWF[x.format]||null,text:x.text,pts};
+  });
+}
+let zwPass=0;
+async function wasmRead(g){
+  // alternate binarizers frame to frame: one copes better with glare, the other with low contrast
+  const opts=Object.assign({},ZW_OPTS,{binarizer:(zwPass++%2)?'GlobalHistogram':'LocalAverage'});
+  try{return zwMap(await ZXingWASM.readBarcodes(g.img,opts),g)}catch(e){return[]}
+}
 let zx=null,hints=null,ZMAP=null;
 function zxReady(){
   if(zx)return true;if(!window.ZXing)return false;
@@ -646,53 +685,85 @@ function zxAll(c){
     if(!r)break;
     const text=r.getText();if(out.some(o=>o.text===text))break;
     const sym=ZMAP.get(r.getBarcodeFormat())||null;
-    out.push({sym,text});
+    out.push({sym,text,pts:null});
     const pts=(r.getResultPoints()||[]).filter(Boolean);if(!pts.length)break;
     const xs=pts.map(p=>p.getX()),ys=pts.map(p=>p.getY());
     let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
     const pad=Math.max(x1-x0,y1-y0)*.35+14;
-    // a 1D barcode reports points along one scan line, so mask its full height
-    if(sym!=='qr'&&sym!=='dm'&&sym!=='aztec'&&sym!=='pdf'){y0=0;y1=c.height}
+    if(sym!=='qr'&&sym!=='dm'){y0=0;y1=c.height}
     ctx.fillStyle='#fff';ctx.fillRect(x0-pad,y0-pad,x1-x0+2*pad,y1-y0+2*pad);
   }
   return out;
 }
-async function native(src){if(!detector)return[];try{return(await detector.detect(src)).map(c=>({sym:NAT[c.format]||null,text:c.rawValue}))}catch(e){return[]}}
-function toCanvas(src,max,crop){
+// one reusable canvas: allocating a new one per frame stalls weaker phones
+const gc=document.createElement('canvas'),gx=gc.getContext('2d',{willReadFrequently:true});
+function grab(src,crop,max,wantData){
   const W=src.videoWidth||src.width,H=src.videoHeight||src.height;
-  const cw=W*(crop?crop[0]:1),ch=H*(crop?crop[1]:1),sx=(W-cw)/2,sy=(H-ch)/2;
-  const sc=Math.min(1,max/Math.max(cw,ch)),c=document.createElement('canvas');
-  c.width=Math.round(cw*sc);c.height=Math.round(ch*sc);
-  const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(src,sx,sy,cw,ch,0,0,c.width,c.height);return c;
+  const cw=W*crop[0],ch=H*crop[1],sx=(W-cw)/2,sy=(H-ch)/2;
+  const sc=Math.min(1,max/Math.max(cw,ch)),w=Math.round(cw*sc),h=Math.round(ch*sc);
+  if(gc.width!==w||gc.height!==h){gc.width=w;gc.height=h}
+  gx.fillStyle='#fff';gx.fillRect(0,0,w,h);gx.drawImage(src,sx,sy,cw,ch,0,0,w,h);
+  return{canvas:gc,img:wantData?gx.getImageData(0,0,w,h):null,sx,sy,sc};
+}
+function merge(a,b){b.forEach(f=>{if(!a.some(x=>x.text===f.text&&x.sym===f.sym))a.push(f)});return a}
+async function decodeFrame(v){
+  let found=await native(v);
+  if(found.length>=2)return found;
+  if(zw)return merge(found,await wasmRead(grab(v,[.94,.9],1920,true)));
+  if(zxReady())return merge(found,zxAll(grab(v,[.9,.82],1280,false).canvas));
+  return found;
 }
 
 /* ---------- live camera ---------- */
 // Every package carries the same two codes, so a code counts once per appearance:
 // it must leave the frame for GAP ms before it can count again.
 const GAP=1000,seen=new Map();
-let stream=null,track_=null,loop=null,busy=false,wake=null,torchOn=false;
+let stream=null,track_=null,caps={},loop=null,busy=false,wake=null,torchOn=false,zoomLevels=[],lastRead=0,tipAt=0,tipN=0;
+function camConstraints(){
+  const v={width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}};
+  if(cfg.cam)v.deviceId={exact:cfg.cam};else v.facingMode={ideal:'environment'};
+  return{video:v,audio:false};
+}
 async function start(){
   if(stream)return;
   unlockAudio();status('');
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){blocked('none');return}
-  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false})}
-  catch(e){stream=null;blocked(e&&e.name);return}
+  try{stream=await navigator.mediaDevices.getUserMedia(camConstraints())}
+  catch(e){
+    if(cfg.cam){cfg.cam='';saveCfg();try{stream=await navigator.mediaDevices.getUserMedia(camConstraints())}catch(e2){stream=null;blocked(e2&&e2.name);return}}
+    else{stream=null;blocked(e&&e.name);return}
+  }
   track_=stream.getVideoTracks()[0];
-  try{const pc=track_.applyConstraints({advanced:[{focusMode:'continuous'}]});if(pc&&pc.catch)pc.catch(()=>{})}catch(e){}
+  try{caps=(track_.getCapabilities&&track_.getCapabilities())||{}}catch(e){caps={}}
+  const adv=[];
+  if(caps.focusMode&&caps.focusMode.includes('continuous'))adv.push({focusMode:'continuous'});
+  if(caps.exposureMode&&caps.exposureMode.includes('continuous'))adv.push({exposureMode:'continuous'});
+  if(adv.length)constrain(adv);
   const v=$('vid');v.srcObject=stream;v.hidden=false;$('frame').hidden=false;$('idle').hidden=true;$('bStop').hidden=false;
   try{await v.play()}catch(e){}
-  try{const caps=track_.getCapabilities&&track_.getCapabilities();$('bTorch').hidden=!(caps&&caps.torch)}catch(e){}
+  $('bTorch').hidden=!caps.torch;
+  zoomLevels=[];
+  if(caps.zoom&&caps.zoom.max>caps.zoom.min){
+    zoomLevels=[1,1.5,2,3].filter(z=>z>=caps.zoom.min&&z<=caps.zoom.max);
+    if(zoomLevels.length<2)zoomLevels=[caps.zoom.min,Math.min(caps.zoom.max,caps.zoom.min*2)];
+  }
+  $('bZoom').hidden=zoomLevels.length<2;
+  if(zoomLevels.length>1)setZoom(zoomLevels.includes(cfg.zoom)?cfg.zoom:zoomLevels[0]);
+  listCameras();
   requestWake();
   $('bMainTxt').textContent='עצור סריקה';
   status('כוון לתווית, כך שה-QR וברקוד המוצר בתוך המסגרת.');
+  lastRead=tipAt=performance.now();tipN=0;
   tick();
 }
+function constrain(adv){try{const p=track_&&track_.applyConstraints({advanced:adv});if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+function setZoom(z){cfg.zoom=z;saveCfg();constrain([{zoom:z}]);$('bZoom').textContent=(Math.round(z*10)/10)+'×'}
 async function requestWake(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}}
 function stop(){
   clearTimeout(loop);loop=null;
-  if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track_=null;torchOn=false;
-  $('vid').hidden=true;$('frame').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;
-  $('bTorch').classList.remove('on');
+  if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track_=null;torchOn=false;caps={};
+  $('vid').hidden=true;$('frame').hidden=true;$('idle').hidden=false;$('bStop').hidden=true;$('bTorch').hidden=true;$('bZoom').hidden=true;
+  $('bTorch').classList.remove('on');drawMarks([]);
   try{wake&&wake.release()}catch(e){}wake=null;
   $('bMainTxt').textContent='התחל סריקה';status('');
 }
@@ -703,21 +774,52 @@ function blocked(name){
     :'אין גישה למצלמה. אשר גישה למצלמה בהגדרות הדפדפן לאתר הזה ורענן את הדף.';
   status('הסריקה החיה לא הופעלה.',true);
 }
-// A code must be read in CONFIRM consecutive looks before it counts; a code that does not belong
-// on the label needs more looks, so one blurry misread never rejects a good package.
-const CONFIRM_OK=2,CONFIRM_WRONG=4;
+async function listCameras(){
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const sel=$('vCam');
+    sel.innerHTML='<option value="">אוטומטי (מצלמה אחורית)</option>'+devs.map((d,i)=>'<option value="'+esc(d.deviceId)+'">'+esc(d.label||('מצלמה '+(i+1)))+'</option>').join('');
+    sel.value=cfg.cam&&devs.some(d=>d.deviceId===cfg.cam)?cfg.cam:'';
+  }catch(e){}
+}
+// a code that matches exactly what the label must carry counts on its first read (checksums make
+// a misread into exactly that value practically impossible); anything else needs repeated reads
+const CONFIRM_OK=1,CONFIRM_WRONG=4;
 function showGrace(frac,left){
   const on=frac>0;$('gbar').hidden=!on;$('gtxt').hidden=!on;
   if(on){$('gbarFill').style.transform='scaleX('+frac+')';$('gtxtIn').textContent='ממתין ל-'+left+'…'}
 }
+// outlines of the codes the camera is reading: green belongs on the label, red does not
+function drawMarks(found){
+  const c=$('ov'),st=$('stage'),v=$('vid'),dpr=window.devicePixelRatio||1;
+  const W=st.clientWidth,H=st.clientHeight;
+  if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  if(!found.length||!v.videoWidth)return;
+  const ds=Math.max(W/v.videoWidth,H/v.videoHeight),ox=(W-v.videoWidth*ds)/2,oy=(H-v.videoHeight*ds)/2;
+  x.lineWidth=4;x.lineJoin='round';
+  for(const f of found){
+    if(!f.pts||f.pts.length<2)continue;
+    x.strokeStyle=slotOf(f)?'#3ddc84':'#ff5a4e';
+    x.beginPath();f.pts.forEach((p,i)=>{const X=p.x*ds+ox,Y=p.y*ds+oy;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.closePath();x.stroke();
+  }
+}
+const TIPS=[
+  ()=>'טיפ: החזק את הטלפון 15–25 ס״מ מהתווית, ישר מולה.',
+  ()=>zoomLevels.length>1?'טיפ: אם התמונה מטושטשת, הרחק את הטלפון והגדל זום בכפתור שבפינה.':'טיפ: אם התמונה מטושטשת, הרחק מעט את הטלפון. מצלמות רבות לא ממקדות מקרוב.',
+  ()=>'טיפ: הקש על התווית במסך כדי למקד עליה.',
+  ()=>caps.torch?'טיפ: באור חלש הדלק את הפנס. אם יש השתקפות, הטה מעט את התווית.':'טיפ: אם יש השתקפות על התווית, הטה אותה מעט.',
+  ()=>'טיפ: אם המצלמה מתקשה, צלם תמונה בכפתור "צילום". תמונה חדה יותר מווידאו.'
+];
 async function tick(){
   if(!stream)return;
   const v=$('vid');
   if(!busy&&v.videoWidth){
     busy=true;
     let found=[];
-    try{found=await native(v);if(found.length<2&&zxReady()){zxAll(toCanvas(v,1280,[.9,.82])).forEach(f=>{if(!found.some(x=>x.text===f.text&&x.sym===f.sym))found.push(f)})}}catch(e){}
+    try{found=await decodeFrame(v)}catch(e){}
     const now=performance.now();let held=0;
+    if(found.length)lastRead=now;
     for(const f of found){
       const key=(f.sym||'')+'|'+f.text;
       let s=seen.get(key);
@@ -745,14 +847,32 @@ async function tick(){
     }
     const wait=phase==='scan'&&!live.start&&found.length>0&&held===found.length;
     $('frame').classList.toggle('wait',wait);$('frameHint').hidden=!wait;
+    drawMarks(phase==='scan'?found:[]);
+    if(phase==='scan'&&!live.start&&now-lastRead>5000&&now-tipAt>5000){tipAt=now;status(TIPS[tipN++%TIPS.length]())}
     busy=false;
   }
-  loop=setTimeout(tick,detector?90:120);
+  loop=setTimeout(tick,(detector||zw)?40:120);
 }
 $('bTorch').addEventListener('click',async()=>{
   if(!track_)return;torchOn=!torchOn;
   try{await track_.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){torchOn=false}
   $('bTorch').classList.toggle('on',torchOn);$('bTorch').setAttribute('aria-pressed',String(torchOn));
+});
+$('bZoom').addEventListener('click',()=>{if(zoomLevels.length>1)setZoom(zoomLevels[(zoomLevels.indexOf(cfg.zoom)+1)%zoomLevels.length])});
+// tap to focus on that spot (Android Chrome); elsewhere it just shows the ring
+$('stage').addEventListener('click',e=>{
+  if(!track_||phase!=='scan'||e.target.closest('button'))return;
+  const r=$('stage').getBoundingClientRect(),X=e.clientX-r.left,Y=e.clientY-r.top,v=$('vid');
+  const ring=$('ring');ring.style.left=X+'px';ring.style.top=Y+'px';ring.hidden=false;ring.classList.remove('go');void ring.offsetWidth;ring.classList.add('go');
+  setTimeout(()=>{ring.hidden=true},900);
+  if(!v.videoWidth)return;
+  const ds=Math.max(r.width/v.videoWidth,r.height/v.videoHeight),ox=(r.width-v.videoWidth*ds)/2,oy=(r.height-v.videoHeight*ds)/2;
+  const px=Math.min(1,Math.max(0,(X-ox)/ds/v.videoWidth)),py=Math.min(1,Math.max(0,(Y-oy)/ds/v.videoHeight));
+  const fm=caps.focusMode||[];
+  if(fm.includes('single-shot')){
+    constrain([{pointsOfInterest:[{x:px,y:py}],focusMode:'single-shot'}]);
+    if(fm.includes('continuous'))setTimeout(()=>constrain([{focusMode:'continuous'}]),2500);
+  }else if(caps.pointsOfInterest!==undefined)constrain([{pointsOfInterest:[{x:px,y:py}]}]);
 });
 
 /* ---------- photo & hand scanner ---------- */
@@ -765,11 +885,21 @@ $('fCam').addEventListener('change',async e=>{
   const file=e.target.files[0];e.target.value='';if(!file)return;
   unlockAudio();if(!readyForInput())return;
   status('מפענח…');
-  let img=null;try{if(window.createImageBitmap)img=await createImageBitmap(file)}catch(x){}
-  if(!img)img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=URL.createObjectURL(file)});
-  if(!img){status('לא ניתן לקרוא את התמונה.',true);return}
-  let found=await native(img);
-  if(found.length<2)for(const s of[1600,1000,2400]){zxAll(toCanvas(img,s)).forEach(f=>{if(!found.some(x=>x.text===f.text&&x.sym===f.sym))found.push(f)});if(found.length>=2)break}
+  let found=[];
+  // full-resolution still photo: much sharper than the video stream on weaker cameras
+  if(zw){try{found=zwMap(await ZXingWASM.readBarcodes(file,Object.assign({},ZW_OPTS,{maxNumberOfSymbols:6})),{sc:1,sx:0,sy:0})}catch(x){}}
+  if(found.length<2){
+    let img=null;try{if(window.createImageBitmap)img=await createImageBitmap(file)}catch(x){}
+    if(!img)img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=URL.createObjectURL(file)});
+    if(img){
+      merge(found,await native(img));
+      for(const sz of[2400,1600]){
+        if(found.length>=2)break;
+        if(zw)merge(found,await wasmRead(grab(img,[1,1],sz,true)));
+        else if(zxReady())merge(found,zxAll(grab(img,[1,1],sz,false).canvas));
+      }
+    }
+  }
   if(!found.length){status('לא נמצא ברקוד. צלם קרוב, ישר ובתאורה טובה.',true);return}
   status('');
   scanSet(found);
@@ -794,6 +924,7 @@ function loadSettings(){
 $('vQr').addEventListener('change',()=>{cfg.qr=clean(unHeb($('vQr').value))||DEF.qr;saveCfg();loadSettings()});
 $('vC').addEventListener('change',()=>{cfg.c128=clean(unHeb($('vC').value))||DEF.c128;saveCfg();loadSettings()});
 $('vSym2').addEventListener('change',()=>{cfg.sym2=$('vSym2').value==='c128'?'c128':'ean13';saveCfg();loadSettings()});
+$('vCam').addEventListener('change',()=>{cfg.cam=$('vCam').value;saveCfg();if(stream){stop();start()}});
 $('vGrace').addEventListener('change',()=>{cfg.grace=Math.min(10,Math.max(1,parseFloat($('vGrace').value)||DEF.grace));saveCfg()});
 $('vPause').addEventListener('change',()=>{cfg.pause=Math.min(5,Math.max(.3,parseFloat($('vPause').value)||DEF.pause));saveCfg()});
 $('oStop').addEventListener('change',()=>{cfg.stopRej=$('oStop').checked;saveCfg()});
